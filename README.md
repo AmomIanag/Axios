@@ -8,6 +8,7 @@
 - Fernando Antônio — 562549
 - Gabriel Ramos Moreira — 564074
 - Vinicius Mello Siqueira — 565257
+- Victor Chen — 565363
 
 ## Descrição do projeto
 
