@@ -1,325 +1,332 @@
-﻿# Axios
+# Axios
 
 **Seu planejamento financeiro, de forma inteligente.**
 
-## Integrantes
+O Axios é um aplicativo acadêmico de planejamento financeiro desenvolvido em
+Flutter. Ele transforma dados financeiros em uma visão clara de renda, gastos,
+saldo e metas, ajudando o usuário a organizar o orçamento e construir planos
+financeiros realistas.
 
-- Amom Ianaguivara — 565718 
-- Fernando Antônio — 562549
-- Gabriel Ramos Moreira — 564074
-- Vinicius Mello Siqueira — 565257
-- Victor Chen — 565363
+## Status — Checkpoint 5
 
-## Descrição do projeto
+O CP5 entrega um protótipo funcional para Web e Android, com cinco telas,
+navegação completa, cálculos consistentes e integração Firebase:
 
-O Axios é um projeto acadêmico de aplicativo mobile de planejamento financeiro,
-desenvolvido em Flutter e Dart. Sua proposta é criar um assistente financeiro
-pessoal inteligente que transforme os hábitos financeiros do usuário em planos
-concretos para atingir seus objetivos.
+- cadastro, login, restauração de sessão e logout por e-mail e senha;
+- dashboard com renda, gastos, saldo, gráfico por categoria e meta em destaque;
+- transações simuladas com busca e filtros;
+- metas com progresso e contribuição mensal calculados;
+- persistência das metas no Cloud Firestore por usuário;
+- assistente demonstrativo com respostas determinísticas;
+- navegação inferior com preservação do estado das abas;
+- estados de carregamento, erro e lista vazia.
 
-## Problema
+O cadastro e a persistência de metas foram validados manualmente no projeto
+Firebase pela execução Web. A execução em Android está configurada, mas ainda não
+foi aprovada em dispositivo físico ou emulador.
 
-Muitas pessoas conseguem visualizar seus gastos, mas têm dificuldade para entender
-quanto podem guardar, organizar suas finanças e transformar essas informações em
-um plano realista para atingir metas financeiras.
+> **Escopo do CP5:** transações, resumo financeiro e respostas do assistente usam
+> dados simulados. Pluggy Sandbox e IA generativa permanecem planejados para uma
+> etapa futura e não são apresentados como integrações concluídas.
 
-## Solução proposta
+## Capturas de tela — Checkpoint 5
 
-O aplicativo pretende reunir a organização dos gastos, a criação de metas e o
-cálculo de planos financeiros. Um assistente com IA explicará esses planos em
-linguagem natural, usando os dados financeiros do usuário como contexto.
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="docs/screenshots/01-login.png" width="240" alt="Tela de login do Axios"><br>
+      <sub><strong>Login</strong> — acesso com e-mail e senha</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/screenshots/02-cadastro.png" width="240" alt="Tela de cadastro do Axios"><br>
+      <sub><strong>Cadastro</strong> — criação de uma nova conta</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/screenshots/03-dashboard.png" width="240" alt="Dashboard financeiro do Axios"><br>
+      <sub><strong>Dashboard</strong> — resumo financeiro e meta atual</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%">
+      <img src="docs/screenshots/04-transacoes.png" width="240" alt="Tela de transações do Axios"><br>
+      <sub><strong>Transações</strong> — busca, filtros e movimentações</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/screenshots/05-metas.png" width="240" alt="Tela de metas do Axios"><br>
+      <sub><strong>Metas</strong> — progresso e planejamento mensal</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/screenshots/06-assistente.png" width="240" alt="Assistente demonstrativo do Axios"><br>
+      <sub><strong>Assistente</strong> — respostas financeiras simuladas</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="3">
+      <img src="docs/screenshots/07-nova-meta.png" width="240" alt="Formulário de nova meta do Axios"><br>
+      <sub><strong>Nova meta</strong> — formulário de criação e planejamento</sub>
+    </td>
+  </tr>
+</table>
 
-Nesta primeira etapa, o aplicativo apresenta apenas a tela inicial da marca.
-Os recursos financeiros e as integrações descritos a seguir são planejados.
+## Funcionalidades implementadas
 
-## Público-alvo
+### Autenticação
 
-Jovens adultos e pessoas que desejam organizar melhor sua vida financeira,
-acompanhar gastos e criar planos claros para atingir objetivos pessoais.
+- Firebase Authentication com e-mail e senha.
+- Validação dos formulários e mensagens de erro compreensíveis.
+- Indicadores de carregamento durante cadastro e login.
+- Sessão restaurada pelo Firebase ao reabrir o aplicativo.
+- Logout disponível no fluxo autenticado.
+- Falha de inicialização do Firebase apresentada com opção de tentar novamente.
 
-## Principais funcionalidades do MVP planejado
+### Dashboard e dados financeiros
 
-- Login simples.
-- Dashboard financeiro.
-- Transações provenientes do Pluggy Sandbox.
-- Categorização de gastos.
-- Criação de metas financeiras.
-- Cálculo de quanto guardar por mês.
-- Assistente com IA usando os dados financeiros do usuário.
-- Gráficos básicos de gastos.
-- Acompanhamento da evolução das metas.
+- Renda mensal de referência: R$ 3.000,00.
+- Gastos mensais de referência: R$ 2.150,00.
+- Saldo estimado calculado: R$ 850,00.
+- Gráfico calculado a partir das mesmas categorias das transações.
+- Resumo da meta atual.
 
-## Fluxo principal do produto
+### Transações
 
-Fluxo previsto para o MVP, ainda não implementado:
+- Lista rolável de receitas e despesas simuladas.
+- Busca por descrição.
+- Filtros Todas, Receitas e Despesas.
+- Valores diferenciados por natureza da movimentação.
+- Estado vazio para filtros sem resultados.
 
-1. O usuário entra no aplicativo.
-2. Conecta uma conta fictícia do Sandbox.
-3. O aplicativo recebe as transações.
-4. Organiza os gastos por categoria.
-5. Calcula renda, despesas e sobra.
-6. O usuário cria uma meta.
-7. O motor financeiro calcula um plano.
-8. A IA explica esse plano em linguagem natural.
+### Metas
 
-## Identidade visual
+- Metas associadas ao UID autenticado em `users/{uid}/goals`.
+- Criação de meta por formulário.
+- Progresso, saldo restante e contribuição mensal calculados.
+- Persistência e restauração pelo Cloud Firestore.
+- Metas de exemplo inseridas somente quando a coleção do usuário está vazia.
 
-A marca parte dos conceitos de clareza, crescimento, inteligência financeira e
-planejamento. O nome Axios acompanha a tagline “Seu planejamento financeiro,
-de forma inteligente.”
+Na meta Viagem, por exemplo, os R$ 1.500,00 acumulados são descontados do
+objetivo de R$ 6.000,00. Restam R$ 4.500,00 e, guardando R$ 500,00 por mês, o
+prazo calculado é de 9 meses.
 
-| Cor | Código | Uso na tela inicial |
-| --- | --- | --- |
-| Off White | `#FAF8F2` | Fundo |
-| Axios Gold | `#E6B800` | Botão principal |
-| Gold Soft | `#F4E7B7` | Fundo do ícone de crescimento |
-| Graphite | `#1F2937` | Textos principais |
-| Gray | `#6B7280` | Texto secundário |
+### Assistente Axios
 
-A tipografia planejada utiliza **Manrope** para marca, títulos e destaques e
-**Inter** para textos e interface. A tela inicial utiliza a tipografia padrão do
-Flutter, sem dependências adicionais de fontes. A identidade visual inicial foi
-definida no Figma.
+- Interface de conversa com balões separados.
+- Campo de mensagem e envio funcional.
+- Rolagem automática.
+- Respostas demonstrativas determinísticas, coerentes com os cálculos do app.
+- Identificação explícita de que não há IA externa neste checkpoint.
 
-### Naming rationale
+## Tecnologias utilizadas
 
-O nome Axios é inspirado em uma palavra de origem grega associada a valor, mérito
-e importância. Essa inspiração se relaciona à proposta de ajudar o usuário a
-compreender o valor do dinheiro e direcioná-lo aos seus objetivos, por meio de
-um planejamento financeiro claro.
-
-### Tom de voz
-
-- **Claro:** explicar informações e conceitos financeiros com linguagem simples,
-  evitando termos técnicos sem explicação.
-- **Inteligente:** conectar os dados financeiros aos objetivos do usuário e
-  explicar o raciocínio por trás dos planos propostos.
-- **Acessível:** acolher pessoas com diferentes níveis de conhecimento financeiro,
-  sem julgamentos sobre seus hábitos ou dúvidas.
-- **Objetivo:** apresentar informações e próximos passos de forma direta,
-  ajudando o usuário a entender o que pode fazer para organizar suas finanças.
-
-## Tecnologias
-
-| Tecnologia | Situação |
+| Tecnologia | Uso no CP5 |
 | --- | --- |
-| Flutter e Dart | Utilizados na estrutura do aplicativo e na tela inicial |
-| Backend | Implementação futura; tecnologia a definir |
-| Pluggy Sandbox | Integração futura com transações de contas fictícias |
-| Banco de dados | Implementação futura; tecnologia a definir |
-| IA | Integração futura para explicar planos financeiros |
-
-## Modelo de negócio
-
-O modelo inicial proposto é freemium. Uma versão gratuita permitiria controle
-financeiro e metas básicas. Uma versão premium poderia oferecer análises mais
-avançadas, mais recursos do assistente inteligente e projeções personalizadas.
-
-## Diferencial competitivo
-
-A proposta vai além do registro e da visualização de gastos: transformar os dados
-financeiros do usuário em recomendações práticas, metas e planos explicados de
-forma simples por um assistente inteligente.
-
-## Roadmap futuro
-
-- Implementar login simples e dashboard financeiro.
-- Definir e implementar o backend e o banco de dados.
-- Integrar o Pluggy Sandbox e organizar transações por categoria.
-- Implementar metas e o cálculo de quanto guardar mensalmente.
-- Adicionar gráficos básicos de gastos e evolução das metas.
-- Integrar o assistente com IA para explicar os planos financeiros.
-
-## Status atual do projeto
-
-Esta primeira etapa contempla:
-
-- Definição da ideia.
-- Branding inicial.
-- Identidade visual no Figma.
-- Estrutura Flutter criada.
-- Tela inicial com nome, tagline, mensagem de apoio e botão “Começar”.
-- Documentação inicial.
-
-O botão “Começar” é apenas visual e ainda não realiza navegação. Não há backend,
-banco de dados, autenticação real, integração com Pluggy ou IA, gráficos funcionais
-ou outras telas implementadas.
+| Flutter e Dart | Interface, navegação, estado e regras de cálculo |
+| Firebase Core | Inicialização do projeto Firebase |
+| Firebase Authentication | Cadastro, sessão, login e logout |
+| Cloud Firestore | Persistência das metas por usuário |
+| `ChangeNotifier` | Estado simples da aplicação |
+| `flutter_svg` | Logo vetorial local |
+| `intl` | Formatação de moeda e datas em português |
+| Inter e Manrope | Tipografia local, sem download em execução |
 
 ## Como executar
 
-Com o Flutter instalado, um SDK Dart compatível com o `pubspec.yaml` e um
-dispositivo ou emulador configurado, execute na raiz do projeto:
+Pré-requisitos:
 
-```sh
+- Flutter compatível com Dart `^3.13.3`;
+- Microsoft Edge para execução Web ou ambiente Android configurado;
+- acesso ao projeto Firebase configurado no repositório.
+
+Na raiz do projeto:
+
+```powershell
 flutter pub get
-flutter run
-```
-
-Para listar os dispositivos disponíveis, utilize `flutter devices`. Caso seja
-necessário selecionar um deles, execute `flutter run -d <id-do-dispositivo>`.
-
-## Verificações
-
-```sh
-dart format .
-flutter analyze
-flutter test
-```
-
-## Estrutura inicial
-
-```text
-lib/
-  main.dart                 # Inicialização e tema do aplicativo
-  screens/
-    home_screen.dart        # Tela inicial do Axios
-test/
-  widget_test.dart           # Teste de apresentação e do botão inicial
-```
-
----
-
-## Checkpoint 5 — Protótipo funcional
-
-> As seções anteriores registram o escopo e o estado acadêmico do Checkpoint 4.
-> A partir deste ponto está documentada a evolução implementada no CP5.
-
-### Funcionalidades do CP5
-
-- Cadastro, login e logout com e-mail e senha pelo Firebase Authentication quando
-  o projeto Firebase está configurado.
-- Modo de demonstração explicitamente identificado para desenvolvimento local e
-  testes sem credenciais externas.
-- Dashboard com renda, gastos, saldo, gráfico por categoria e resumo da meta.
-- Transações simuladas com busca, filtros de receitas/despesas e estado vazio.
-- Metas com progresso calculado, formulário de criação, plano mensal e persistência
-  no Cloud Firestore quando o Firebase está ativo.
-- Assistente demonstrativo com mensagens determinísticas e cálculos feitos sobre os
-  mesmos dados financeiros do aplicativo. Não há IA externa neste checkpoint.
-- Navegação inferior entre Início, Transações, Metas e Assistente com preservação do
-  estado das abas por `IndexedStack`.
-- Layouts responsivos, áreas seguras, conteúdo rolável e alvos de toque adequados.
-
-O conjunto simulado representa renda de R$ 3.000,00, gastos de R$ 2.150,00 e
-sobra de R$ 850,00. Categorias e gráfico são derivados das mesmas transações. Na
-meta Viagem, os R$ 1.500,00 acumulados são descontados do objetivo de R$ 6.000,00:
-guardando R$ 500,00 por mês, faltam 9 meses.
-
-### Arquitetura adotada
-
-```text
-lib/
-  app.dart                    # MaterialApp e gate de autenticação
-  app_dependencies.dart       # Injeção simples dos repositórios
-  bootstrap_app.dart          # Inicialização, erro seguro e nova tentativa
-  core/
-    theme/                    # Cores, tipografia e tema
-    utils/                    # Formatação monetária e de datas
-  data/                       # Fonte central de dados simulados
-  models/                     # Usuário, transação, resumo, meta e mensagem
-  repositories/              # Contratos e implementações Firebase/em memória
-  services/                   # Inicialização segura do Firebase
-  state/                      # AppController (ChangeNotifier)
-  screens/                    # Login, cadastro, shell e quatro telas principais
-  widgets/                    # Logo, cards, gráfico, cabeçalho e navegação
-test/
-  app_dependencies_test.dart
-  bootstrap_app_test.dart
-  financial_calculations_test.dart
-  navigation_test.dart
-  transaction_filter_test.dart
-  widget_test.dart
-firestore.rules               # Isolamento dos dados por UID autenticado
-```
-
-A solução usa apenas `ChangeNotifier`, abstrações de repositório e componentes
-nativos do Flutter. Isso mantém o protótipo simples e deixa os serviços externos
-substituíveis em testes.
-
-### Dependências principais
-
-| Dependência | Uso |
-| --- | --- |
-| `firebase_core` | Inicialização da aplicação Firebase |
-| `firebase_auth` | Cadastro, login, sessão e logout |
-| `cloud_firestore` | Persistência das metas em `users/{uid}/goals` |
-| `flutter_svg` | Renderização local da logo vetorial do Figma |
-| `intl` | Formatação de moeda e datas em português |
-
-As fontes Inter e Manrope estão empacotadas em `assets/fonts`, evitando download em
-tempo de execução.
-
-### Configuração do Firebase
-
-O aplicativo está configurado para o projeto Firebase `axios-finance` nas
-plataformas Android e Web. O arquivo `lib/firebase_options.dart`, gerado pelo
-FlutterFire CLI, é usado por `DefaultFirebaseOptions.currentPlatform`; não são
-necessários `dart-define` com a configuração do cliente Firebase.
-
-Para reproduzir ou atualizar essa configuração em outro ambiente:
-
-1. Selecione o projeto `axios-finance` no Firebase Console.
-2. Habilite **Authentication > Sign-in method > Email/Password**.
-3. Crie um banco **Cloud Firestore**.
-4. Com o FlutterFire CLI instalado, execute `flutterfire configure` na raiz do
-   projeto e selecione Android e Web.
-5. Publique as regras de `firestore.rules` no Firebase Console ou com a Firebase
-   CLI. Elas permitem que cada usuário acesse apenas `users/{seuUid}`.
-
-Uma execução normal sempre usa Firebase Authentication e Cloud Firestore. Se a
-inicialização falhar, o aplicativo mostra uma mensagem segura e a opção **Tentar
-novamente**; ele não troca silenciosamente para dados em memória.
-
-O modo demonstração só é ativado explicitamente. Ele é usado automaticamente
-pelos testes e pode ser solicitado para uma apresentação local com:
-
-```sh
-flutter run -d edge --dart-define=AXIOS_DEMO_MODE=true
-```
-
-Nesse modo, a tela identifica claramente que autenticação e metas são mantidas
-apenas em memória. Nunca use essa opção para validar a integração Firebase.
-
-### Execução e testes
-
-```sh
-flutter pub get
-dart format .
-flutter analyze
-flutter test
-flutter build web
+flutter devices
 flutter run -d edge
 ```
 
 Para Android:
 
-```sh
+```powershell
 flutter devices
 flutter run -d <id-do-dispositivo>
-flutter build apk --debug
 ```
 
-### Decisões técnicas e limites conhecidos
+A configuração Android existe, mas o CP5 ainda precisa de QA em aparelho físico
+ou emulador antes de ser considerado validado nessa plataforma.
 
-- Transações, resumo financeiro e categorias são simulados e centralizados; o
-  Pluggy Sandbox continua fora do escopo do CP5.
-- O Assistente Axios é determinístico e se identifica como simulado; integração
-  com IA é etapa futura.
-- As metas de usuários autenticados são persistidas no Firestore e metas de exemplo
-  são inseridas somente quando a coleção do usuário está vazia.
-- Cadastro, login, restauração da sessão e logout são encaminhados diretamente ao
-  Firebase Authentication na execução normal.
-- Os testes automatizados usam repositórios injetados e não criam usuários ou
-  documentos reais no projeto Firebase.
-- O projeto não contém chaves administrativas, service accounts ou senhas.
+### Modo demonstração
 
-### Próximos passos até o APK final
+A execução normal sempre usa Firebase real. O modo em memória só é ativado de
+forma explícita para testes e apresentações sem dados externos:
 
-1. Validar manualmente cadastro, login, restauração da sessão e persistência de uma
-   meta com uma conta de teste em Android e Web.
-2. Executar o conjunto completo de análise, testes e build em uma máquina com o
-   Flutter/Android SDK disponíveis.
-3. Fazer QA em aparelho Android físico, incluindo teclado, tamanhos de fonte e telas
-   pequenas.
-4. Na etapa futura do MVP, integrar Pluggy Sandbox e IA real mantendo os contratos
-   de repositório existentes.
+```powershell
+flutter run -d edge --dart-define=AXIOS_DEMO_MODE=true
+```
+
+Nesse modo, a tela de login informa que autenticação e metas são demonstrativas.
+Uma falha do Firebase em execução normal não ativa esse modo automaticamente.
+
+## Configuração do Firebase
+
+O aplicativo está associado ao projeto `axios-finance` para Android e Web. O
+arquivo gerado pelo FlutterFire CLI, `lib/firebase_options.dart`, é carregado com
+`DefaultFirebaseOptions.currentPlatform`.
+
+Para reproduzir a configuração em outro ambiente:
+
+1. Selecione ou crie o projeto no Firebase Console.
+2. Habilite **Authentication > Sign-in method > Email/Password**.
+3. Crie o banco Cloud Firestore.
+4. Execute `flutterfire configure` e selecione Android e Web.
+5. Confira `lib/firebase_options.dart` e `android/app/google-services.json`.
+6. Publique as regras de `firestore.rules` no projeto correto.
+
+As regras incluídas no repositório limitam o acesso ao usuário autenticado:
+
+```text
+users/{uid}/goals/{goalId}
+```
+
+Cada operação exige que `request.auth.uid` corresponda ao `uid` do caminho. O
+aplicativo não contém service accounts, chaves administrativas ou senhas.
+
+## Arquitetura
+
+```text
+lib/
+  main.dart                    # Entrada e seleção explícita do modo demo
+  bootstrap_app.dart           # Inicialização, erro seguro e nova tentativa
+  app.dart                     # MaterialApp e gate de autenticação
+  app_dependencies.dart        # Injeção simples dos repositórios
+  core/
+    theme/                     # Cores, tipografia e tema
+    utils/                     # Formatação monetária e de datas
+  data/                        # Fonte central de dados simulados
+  models/                      # Usuário, transação, resumo, meta e mensagem
+  repositories/               # Firebase, Firestore e implementações em memória
+  services/                    # Inicialização segura do Firebase
+  state/                       # AppController com ChangeNotifier
+  screens/                     # Autenticação, shell e telas principais
+  widgets/                     # Componentes visuais reutilizáveis
+test/                          # Testes unitários e de widgets
+docs/screenshots/              # Documentação visual do CP5
+firestore.rules                # Isolamento por UID autenticado
+```
+
+### Decisões técnicas do CP4 ao CP5
+
+- O Design System criado no CP4 foi preservado e transformado em tema Flutter.
+- A aplicação usa componentes nativos e `ChangeNotifier`, evitando complexidade
+  desnecessária no protótipo.
+- Repositórios isolam Firebase das telas e permitem testes sem serviços externos.
+- Dados financeiros simulados são centralizados para manter Dashboard,
+  Transações, Metas e Assistente consistentes.
+- O shell usa `IndexedStack`, preservando cada aba sem empilhar rotas repetidas.
+- Layouts usam `SafeArea`, rolagem e limites de largura para funcionar em telas
+  móveis e Web.
+- A aplicação falha de forma explícita se o Firebase não inicializar; não há
+  fallback silencioso para autenticação fictícia.
+
+## Testes e verificações
+
+Comandos de qualidade:
+
+```powershell
+dart format .
+flutter analyze
+flutter test
+flutter build web
+```
+
+Na validação mais recente do CP5:
+
+- `flutter analyze`: nenhuma ocorrência;
+- `flutter test`: 16 testes aprovados;
+- `flutter build web`: concluído com sucesso;
+- inicialização Web no Edge: concluída;
+- credencial inválida: rejeitada pelo Firebase Authentication;
+- cadastro e persistência de meta: validados manualmente no Firebase;
+- execução Android: ainda não validada.
+
+Os testes cobrem cálculos financeiros, progresso das metas, filtros de
+transações, navegação, validação de formulário, seleção de dependências, erros de
+autenticação e nova tentativa após falha de inicialização. Eles usam repositórios
+injetados e não criam usuários ou documentos remotos.
+
+## Limitações conhecidas
+
+- As transações ainda não vêm do Pluggy Sandbox.
+- O assistente não usa IA generativa ou outro serviço externo.
+- Não há sincronização bancária, edição avançada de transações ou notificações.
+- A execução Android precisa de validação em emulador e aparelho físico.
+
+## Próximos passos — CP6
+
+1. Validar a experiência completa em Android e gerar o APK final.
+2. Integrar o Pluggy Sandbox e substituir as transações simuladas.
+3. Evoluir o assistente para IA real com limites, transparência e segurança.
+4. Adicionar edição e exclusão de metas com testes de persistência.
+5. Ampliar testes de integração e automação de release.
+6. Avaliar gráficos históricos, notificações e acessibilidade avançada.
+
+## Identidade visual
+
+| Cor | Código | Uso |
+| --- | --- | --- |
+| Background | `#FAF8F2` | Fundo principal |
+| Axios Gold | `#E6B800` | Ações e destaques |
+| Gold Soft | `#F4E7B7` | Superfícies de destaque |
+| Graphite | `#1F2937` | Títulos e textos principais |
+| Gray | `#6B7280` | Textos secundários |
+| Surface | `#FFFFFF` | Cartões e campos |
+| Border | `#E5E7EB` | Contornos e divisores |
+| Success | `#16A34A` | Receitas e estados positivos |
+| Danger | `#DC2626` | Despesas e erros |
+
+Manrope é usada em títulos, marca e números financeiros; Inter é usada em textos,
+formulários, botões e navegação. A logo preserva o “A” geométrico dourado e
+grafite definido no Figma.
+
+### Nome e tom de voz
+
+Axios é inspirado em uma palavra de origem grega associada a valor, mérito e
+importância. A marca busca ser clara, inteligente, acessível e objetiva, sem
+julgar os hábitos financeiros do usuário.
+
+## Equipe
+
+- Amom Ianaguivara — RM 565718
+- Fernando Antônio — RM 562549
+- Gabriel Ramos Moreira — RM 564074
+- Vinicius Mello Siqueira — RM 565257
+- Victor Chen — RM 565363
+
+## Histórico acadêmico — Checkpoint 4
+
+O CP4 definiu a proposta do produto, a identidade visual, o público e o protótipo
+de interface no Figma. Naquele checkpoint, o projeto Flutter possuía somente a
+tela inicial da marca e o botão “Começar” ainda não navegava. As demais telas,
+Firebase, gráficos e interações eram itens planejados — esse texto descreve apenas
+o estado histórico do CP4, não o estado atual do aplicativo.
+
+### Problema e público-alvo
+
+Muitas pessoas conseguem visualizar seus gastos, mas têm dificuldade para entender
+quanto podem guardar, organizar as finanças e transformar essas informações em um
+plano realista. O público-alvo inicial são jovens adultos e pessoas que desejam
+organizar sua vida financeira e criar planos claros para objetivos pessoais.
+
+### Solução e diferencial propostos
+
+A proposta é ir além do registro de gastos: relacionar informações financeiras,
+metas e planos em linguagem simples. O modelo de negócio acadêmico considerado é
+freemium, com uma base gratuita para controle e metas e uma possível versão
+premium com análises avançadas.
+
+### Evolução do escopo planejado
+
+O fluxo imaginado no CP4 incluía login, conexão a uma conta Sandbox, organização
+de transações, cálculo de renda e despesas, criação de metas e explicação por IA.
+No CP5 foram implementados login real, dashboard, transações simuladas, metas com
+Firestore e assistente determinístico. Pluggy Sandbox e IA real continuam fora do
+escopo concluído.
