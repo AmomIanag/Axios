@@ -1,31 +1,23 @@
+import 'package:axios/app.dart';
+import 'package:axios/app_dependencies.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:axios/main.dart';
-
 void main() {
-  testWidgets('Apresenta o Axios e mantém a tela ao tocar em Começar', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const AxiosApp());
+  testWidgets('valida os campos obrigatórios no login', (tester) async {
+    final dependencies = AppDependencies.demo();
+    await tester.pumpWidget(AxiosApp(controller: dependencies.controller));
 
     expect(find.text('Axios'), findsOneWidget);
+    expect(find.text('Entrar'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('login-button')));
+    await tester.pump();
+
+    expect(find.text('Digite um e-mail válido.'), findsOneWidget);
     expect(
-      find.text('Seu planejamento financeiro, de forma inteligente.'),
+      find.text('A senha deve ter pelo menos 6 caracteres.'),
       findsOneWidget,
     );
-    expect(
-      find.text(
-        'Transforme seus dados financeiros em planos para alcançar seus objetivos.',
-      ),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.widgetWithText(FilledButton, 'Começar'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Axios'), findsOneWidget);
-    expect(find.byType(Scaffold), findsOneWidget);
-    expect(tester.takeException(), isNull);
   });
 }

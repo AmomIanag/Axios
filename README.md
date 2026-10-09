@@ -176,3 +176,143 @@ lib/
 test/
   widget_test.dart           # Teste de apresentação e do botão inicial
 ```
+
+---
+
+## Checkpoint 5 — Protótipo funcional
+
+> As seções anteriores registram o escopo e o estado acadêmico do Checkpoint 4.
+> A partir deste ponto está documentada a evolução implementada no CP5.
+
+### Funcionalidades do CP5
+
+- Cadastro, login e logout com e-mail e senha pelo Firebase Authentication quando
+  o projeto Firebase está configurado.
+- Modo de demonstração explicitamente identificado para desenvolvimento local e
+  testes sem credenciais externas.
+- Dashboard com renda, gastos, saldo, gráfico por categoria e resumo da meta.
+- Transações simuladas com busca, filtros de receitas/despesas e estado vazio.
+- Metas com progresso calculado, formulário de criação, plano mensal e persistência
+  no Cloud Firestore quando o Firebase está ativo.
+- Assistente demonstrativo com mensagens determinísticas e cálculos feitos sobre os
+  mesmos dados financeiros do aplicativo. Não há IA externa neste checkpoint.
+- Navegação inferior entre Início, Transações, Metas e Assistente com preservação do
+  estado das abas por `IndexedStack`.
+- Layouts responsivos, áreas seguras, conteúdo rolável e alvos de toque adequados.
+
+O conjunto simulado representa renda de R$ 3.000,00, gastos de R$ 2.150,00 e
+sobra de R$ 850,00. Categorias e gráfico são derivados das mesmas transações. Na
+meta Viagem, os R$ 1.500,00 acumulados são descontados do objetivo de R$ 6.000,00:
+guardando R$ 500,00 por mês, faltam 9 meses.
+
+### Arquitetura adotada
+
+```text
+lib/
+  app.dart                    # MaterialApp e gate de autenticação
+  app_dependencies.dart       # Injeção simples e seleção Firebase/demonstração
+  core/
+    theme/                    # Cores, tipografia e tema
+    utils/                    # Formatação monetária e de datas
+  data/                       # Fonte central de dados simulados
+  models/                     # Usuário, transação, resumo, meta e mensagem
+  repositories/              # Contratos e implementações Firebase/em memória
+  services/                   # Inicialização segura do Firebase
+  state/                      # AppController (ChangeNotifier)
+  screens/                    # Login, cadastro, shell e quatro telas principais
+  widgets/                    # Logo, cards, gráfico, cabeçalho e navegação
+test/
+  financial_calculations_test.dart
+  navigation_test.dart
+  transaction_filter_test.dart
+  widget_test.dart
+firestore.rules               # Isolamento dos dados por UID autenticado
+```
+
+A solução usa apenas `ChangeNotifier`, abstrações de repositório e componentes
+nativos do Flutter. Isso mantém o protótipo simples e deixa os serviços externos
+substituíveis em testes.
+
+### Dependências principais
+
+| Dependência | Uso |
+| --- | --- |
+| `firebase_core` | Inicialização da aplicação Firebase |
+| `firebase_auth` | Cadastro, login, sessão e logout |
+| `cloud_firestore` | Persistência das metas em `users/{uid}/goals` |
+| `flutter_svg` | Renderização local da logo vetorial do Figma |
+| `intl` | Formatação de moeda e datas em português |
+
+As fontes Inter e Manrope estão empacotadas em `assets/fonts`, evitando download em
+tempo de execução.
+
+### Configuração do Firebase
+
+O repositório não contém credenciais de um projeto Firebase. Para ativar a
+integração real:
+
+1. Crie ou selecione um projeto no Firebase Console.
+2. Habilite **Authentication > Sign-in method > Email/Password**.
+3. Crie um banco **Cloud Firestore**.
+4. Instale o FlutterFire CLI no seu ambiente e, na raiz do projeto, execute
+   `flutterfire configure` para Android (e outros targets nativos desejados).
+5. Publique as regras de `firestore.rules` no Firebase Console ou com a Firebase
+   CLI. Elas permitem que cada usuário acesse apenas `users/{seuUid}`.
+
+No Web, o protótipo também aceita a configuração por `dart-define`, sem gravar
+valores no repositório:
+
+```sh
+flutter run -d chrome \
+  --dart-define=FIREBASE_API_KEY=... \
+  --dart-define=FIREBASE_APP_ID=... \
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID=... \
+  --dart-define=FIREBASE_PROJECT_ID=... \
+  --dart-define=FIREBASE_AUTH_DOMAIN=... \
+  --dart-define=FIREBASE_STORAGE_BUCKET=...
+```
+
+Sem a configuração, o aplicativo inicia em modo de demonstração, mostra esse fato
+na tela de login e usa autenticação/metas somente em memória. Esse fallback existe
+para preview e testes; ele não deve ser confundido com persistência real.
+
+### Execução e testes
+
+```sh
+flutter pub get
+dart format .
+flutter analyze
+flutter test
+flutter run -d chrome
+```
+
+Para Android:
+
+```sh
+flutter devices
+flutter run -d <id-do-dispositivo>
+flutter build apk --debug
+```
+
+### Decisões técnicas e limites conhecidos
+
+- Transações, resumo financeiro e categorias são simulados e centralizados; o
+  Pluggy Sandbox continua fora do escopo do CP5.
+- O Assistente Axios é determinístico e se identifica como simulado; integração
+  com IA é etapa futura.
+- As metas de usuários autenticados são persistidas no Firestore e metas de exemplo
+  são inseridas somente quando a coleção do usuário está vazia.
+- A configuração de um projeto Firebase, a ativação dos serviços no Console e a
+  publicação das regras são ações externas obrigatórias.
+- O projeto não contém chaves administrativas, service accounts ou senhas.
+
+### Próximos passos até o APK final
+
+1. Configurar o projeto Firebase acadêmico e validar cadastro, sessão e persistência
+   em Android e Web.
+2. Executar o conjunto completo de análise, testes e build em uma máquina com o
+   Flutter/Android SDK disponíveis.
+3. Fazer QA em aparelho Android físico, incluindo teclado, tamanhos de fonte e telas
+   pequenas.
+4. Na etapa futura do MVP, integrar Pluggy Sandbox e IA real mantendo os contratos
+   de repositório existentes.
