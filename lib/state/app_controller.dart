@@ -164,6 +164,11 @@ class AppController extends ChangeNotifier {
     'email-already-in-use' => 'Este e-mail já possui uma conta.',
     'invalid-email' => 'Digite um e-mail válido.',
     'weak-password' => 'Use uma senha com pelo menos 6 caracteres.',
+    'user-disabled' => 'Esta conta foi desativada.',
+    'too-many-requests' =>
+      'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+    'operation-not-allowed' =>
+      'O acesso por e-mail e senha não está disponível no momento.',
     'network-request-failed' => 'Sem conexão. Tente novamente.',
     _ => 'Não foi possível autenticar. Tente novamente.',
   };

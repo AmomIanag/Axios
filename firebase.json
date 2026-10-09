@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"axios-finance","appId":"1:675252707090:android:8869bee3a3133e2836ddcb","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"axios-finance","configurations":{"android":"1:675252707090:android:8869bee3a3133e2836ddcb","web":"1:675252707090:web:9ac57dda3af11d1236ddcb"}}}}}}

@@ -210,7 +210,8 @@ guardando R$ 500,00 por mês, faltam 9 meses.
 ```text
 lib/
   app.dart                    # MaterialApp e gate de autenticação
-  app_dependencies.dart       # Injeção simples e seleção Firebase/demonstração
+  app_dependencies.dart       # Injeção simples dos repositórios
+  bootstrap_app.dart          # Inicialização, erro seguro e nova tentativa
   core/
     theme/                    # Cores, tipografia e tema
     utils/                    # Formatação monetária e de datas
@@ -222,6 +223,8 @@ lib/
   screens/                    # Login, cadastro, shell e quatro telas principais
   widgets/                    # Logo, cards, gráfico, cabeçalho e navegação
 test/
+  app_dependencies_test.dart
+  bootstrap_app_test.dart
   financial_calculations_test.dart
   navigation_test.dart
   transaction_filter_test.dart
@@ -248,33 +251,34 @@ tempo de execução.
 
 ### Configuração do Firebase
 
-O repositório não contém credenciais de um projeto Firebase. Para ativar a
-integração real:
+O aplicativo está configurado para o projeto Firebase `axios-finance` nas
+plataformas Android e Web. O arquivo `lib/firebase_options.dart`, gerado pelo
+FlutterFire CLI, é usado por `DefaultFirebaseOptions.currentPlatform`; não são
+necessários `dart-define` com a configuração do cliente Firebase.
 
-1. Crie ou selecione um projeto no Firebase Console.
+Para reproduzir ou atualizar essa configuração em outro ambiente:
+
+1. Selecione o projeto `axios-finance` no Firebase Console.
 2. Habilite **Authentication > Sign-in method > Email/Password**.
 3. Crie um banco **Cloud Firestore**.
-4. Instale o FlutterFire CLI no seu ambiente e, na raiz do projeto, execute
-   `flutterfire configure` para Android (e outros targets nativos desejados).
+4. Com o FlutterFire CLI instalado, execute `flutterfire configure` na raiz do
+   projeto e selecione Android e Web.
 5. Publique as regras de `firestore.rules` no Firebase Console ou com a Firebase
    CLI. Elas permitem que cada usuário acesse apenas `users/{seuUid}`.
 
-No Web, o protótipo também aceita a configuração por `dart-define`, sem gravar
-valores no repositório:
+Uma execução normal sempre usa Firebase Authentication e Cloud Firestore. Se a
+inicialização falhar, o aplicativo mostra uma mensagem segura e a opção **Tentar
+novamente**; ele não troca silenciosamente para dados em memória.
+
+O modo demonstração só é ativado explicitamente. Ele é usado automaticamente
+pelos testes e pode ser solicitado para uma apresentação local com:
 
 ```sh
-flutter run -d chrome \
-  --dart-define=FIREBASE_API_KEY=... \
-  --dart-define=FIREBASE_APP_ID=... \
-  --dart-define=FIREBASE_MESSAGING_SENDER_ID=... \
-  --dart-define=FIREBASE_PROJECT_ID=... \
-  --dart-define=FIREBASE_AUTH_DOMAIN=... \
-  --dart-define=FIREBASE_STORAGE_BUCKET=...
+flutter run -d edge --dart-define=AXIOS_DEMO_MODE=true
 ```
 
-Sem a configuração, o aplicativo inicia em modo de demonstração, mostra esse fato
-na tela de login e usa autenticação/metas somente em memória. Esse fallback existe
-para preview e testes; ele não deve ser confundido com persistência real.
+Nesse modo, a tela identifica claramente que autenticação e metas são mantidas
+apenas em memória. Nunca use essa opção para validar a integração Firebase.
 
 ### Execução e testes
 
@@ -283,7 +287,8 @@ flutter pub get
 dart format .
 flutter analyze
 flutter test
-flutter run -d chrome
+flutter build web
+flutter run -d edge
 ```
 
 Para Android:
@@ -302,14 +307,16 @@ flutter build apk --debug
   com IA é etapa futura.
 - As metas de usuários autenticados são persistidas no Firestore e metas de exemplo
   são inseridas somente quando a coleção do usuário está vazia.
-- A configuração de um projeto Firebase, a ativação dos serviços no Console e a
-  publicação das regras são ações externas obrigatórias.
+- Cadastro, login, restauração da sessão e logout são encaminhados diretamente ao
+  Firebase Authentication na execução normal.
+- Os testes automatizados usam repositórios injetados e não criam usuários ou
+  documentos reais no projeto Firebase.
 - O projeto não contém chaves administrativas, service accounts ou senhas.
 
 ### Próximos passos até o APK final
 
-1. Configurar o projeto Firebase acadêmico e validar cadastro, sessão e persistência
-   em Android e Web.
+1. Validar manualmente cadastro, login, restauração da sessão e persistência de uma
+   meta com uma conta de teste em Android e Web.
 2. Executar o conjunto completo de análise, testes e build em uma máquina com o
    Flutter/Android SDK disponíveis.
 3. Fazer QA em aparelho Android físico, incluindo teclado, tamanhos de fonte e telas

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "675252707090",
+    "project_id": "axios-finance",
+    "storage_bucket": "axios-finance.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:675252707090:android:8869bee3a3133e2836ddcb",
+        "android_client_info": {
+          "package_name": "com.example.axios"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjuUzVxzCJaOL9xCfUfAQbLBw18crBvY4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,10 +1,13 @@
 import 'package:flutter/widgets.dart';
 
-import 'app.dart';
+import 'bootstrap_app.dart';
 import 'app_dependencies.dart';
 
-Future<void> main() async {
+const _demoMode = bool.fromEnvironment('AXIOS_DEMO_MODE');
+
+Future<AppDependencies> _bootstrapDemo() async => AppDependencies.demo();
+
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  final dependencies = await AppDependencies.bootstrap();
-  runApp(AxiosApp(controller: dependencies.controller));
+  runApp(AxiosBootstrapApp(bootstrap: _demoMode ? _bootstrapDemo : null));
 }
