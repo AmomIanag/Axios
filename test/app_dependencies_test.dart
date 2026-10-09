@@ -56,6 +56,7 @@ void main() {
       expect(dependencies.mode, AppMode.firebase);
       expect(dependencies.controller.firebaseAvailable, isTrue);
       expect(dependencies.controller.user?.id, 'uid-real');
+      expect(dependencies.controller.usesRealAssistant, isTrue);
     });
 
     test('modo demonstração só é criado explicitamente', () {
@@ -64,6 +65,7 @@ void main() {
 
       expect(dependencies.mode, AppMode.demo);
       expect(dependencies.controller.firebaseAvailable, isFalse);
+      expect(dependencies.controller.usesRealAssistant, isFalse);
     });
   });
 

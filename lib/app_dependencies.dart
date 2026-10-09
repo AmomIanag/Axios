@@ -13,6 +13,8 @@ import 'repositories/in_memory_goal_repository.dart';
 import 'repositories/in_memory_transaction_repository.dart';
 import 'repositories/transaction_repository.dart';
 import 'services/firebase_bootstrap.dart';
+import 'services/ai_assistant_service.dart';
+import 'services/firebase_gemini_assistant_service.dart';
 import 'state/app_controller.dart';
 
 enum AppMode { firebase, demo }
@@ -30,6 +32,7 @@ typedef FirebaseInitializer = Future<FirebaseBootstrapResult> Function();
 typedef AuthRepositoryFactory = AuthRepository Function();
 typedef GoalRepositoryFactory = GoalRepository Function();
 typedef TransactionRepositoryFactory = TransactionRepository Function();
+typedef AiAssistantServiceFactory = AiAssistantService Function();
 
 class AppDependencies {
   AppDependencies._(this.controller, this.mode);
@@ -42,6 +45,7 @@ class AppDependencies {
     AuthRepositoryFactory? createAuthRepository,
     GoalRepositoryFactory? createGoalRepository,
     TransactionRepositoryFactory? createTransactionRepository,
+    AiAssistantServiceFactory? createAssistantService,
   }) async {
     final firebase =
         await (initializeFirebase ?? FirebaseBootstrap.initialize)();
@@ -59,7 +63,11 @@ class AppDependencies {
       transactionRepository:
           (createTransactionRepository ??
           () => FirestoreTransactionRepository(FirebaseFirestore.instance))(),
+      assistantService:
+          (createAssistantService ?? FirebaseGeminiAssistantService.new)(),
       firebaseAvailable: true,
+      firebaseMessage: firebase.message,
+      appCheckActive: firebase.appCheckActive,
     );
     controller.initialize();
     return AppDependencies._(controller, AppMode.firebase);
@@ -80,6 +88,7 @@ class AppDependencies {
       transactionRepository: InMemoryTransactionRepository(
         initialTransactions: MockFinancialData.transactions,
       ),
+      assistantService: const DemoAssistantService(),
       firebaseAvailable: false,
       firebaseMessage: 'Ambiente de teste',
     );

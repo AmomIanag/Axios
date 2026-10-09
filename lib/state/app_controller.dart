@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/app_user.dart';
+import '../models/chat_message.dart';
+import '../models/financial_assistant_context.dart';
 import '../models/financial_summary.dart';
 import '../models/financial_transaction.dart';
 import '../models/goal.dart';
@@ -12,6 +14,8 @@ import '../repositories/goal_repository.dart';
 import '../repositories/in_memory_transaction_repository.dart';
 import '../repositories/transaction_repository.dart';
 import '../services/financial_engine.dart';
+import '../services/ai_assistant_service.dart';
+import '../services/financial_assistant_context_builder.dart';
 
 enum GoalsStatus { loading, loaded, empty, error }
 
@@ -22,17 +26,28 @@ class AppController extends ChangeNotifier {
     this._authRepository,
     this._goalRepository, {
     TransactionRepository? transactionRepository,
+    AiAssistantService? assistantService,
+    FinancialAssistantContextBuilder? assistantContextBuilder,
     required this.firebaseAvailable,
     this.firebaseMessage,
+    this.appCheckActive = false,
   }) : _transactionRepository =
-           transactionRepository ?? InMemoryTransactionRepository();
+           transactionRepository ?? InMemoryTransactionRepository(),
+       _assistantService = assistantService ?? const DemoAssistantService(),
+       _assistantContextBuilder =
+           assistantContextBuilder ?? const FinancialAssistantContextBuilder() {
+    _resetAssistantConversation();
+  }
 
   final AuthRepository _authRepository;
   final GoalRepository _goalRepository;
   final TransactionRepository _transactionRepository;
   final FinancialEngine _financialEngine = const FinancialEngine();
+  final AiAssistantService _assistantService;
+  final FinancialAssistantContextBuilder _assistantContextBuilder;
   final bool firebaseAvailable;
   final String? firebaseMessage;
+  final bool appCheckActive;
 
   StreamSubscription<AppUser?>? _authSubscription;
   StreamSubscription<List<Goal>>? _goalsSubscription;
@@ -52,6 +67,27 @@ class AppController extends ChangeNotifier {
     DateTime.now().month,
   );
   bool _periodWasSelected = false;
+  List<ChatMessage> assistantMessages = const [];
+  bool assistantBusy = false;
+  AssistantFailure? assistantFailure;
+  _AssistantRetry? _assistantRetry;
+
+  AiAssistantMode get assistantMode => _assistantService.mode;
+  bool get usesRealAssistant => assistantMode == AiAssistantMode.real;
+  String get assistantModelName => _assistantService.modelName;
+
+  FinancialAssistantContext get assistantFinancialContext =>
+      _assistantContextBuilder.build(
+        transactions: transactions,
+        goals: goals,
+        period: selectedPeriod,
+        transactionsLoaded:
+            transactionsStatus == TransactionsStatus.loaded ||
+            transactionsStatus == TransactionsStatus.empty,
+        goalsLoaded:
+            goalsStatus == GoalsStatus.loaded ||
+            goalsStatus == GoalsStatus.empty,
+      );
 
   List<FinancialTransaction> get periodTransactions =>
       _financialEngine.forPeriod(transactions, selectedPeriod);
@@ -99,6 +135,81 @@ class AppController extends ChangeNotifier {
     selectedPeriod = period;
     _periodWasSelected = true;
     notifyListeners();
+  }
+
+  Future<bool> sendAssistantMessage(String input) async {
+    final question = input.trim();
+    if (question.isEmpty || assistantBusy) return false;
+    if (user == null) {
+      assistantFailure = const AssistantFailure(
+        AssistantFailureKind.authentication,
+        'Entre novamente para conversar com o assistente.',
+      );
+      notifyListeners();
+      return false;
+    }
+
+    final history = List<ChatMessage>.unmodifiable(assistantMessages);
+    assistantMessages = List.unmodifiable([
+      ...assistantMessages,
+      ChatMessage(author: MessageAuthor.user, text: question),
+    ]);
+    _assistantRetry = _AssistantRetry(question, history);
+    return _requestAssistantReply(question, history);
+  }
+
+  Future<bool> retryAssistantMessage() async {
+    final retry = _assistantRetry;
+    if (retry == null || assistantBusy || user == null) return false;
+    return _requestAssistantReply(retry.question, retry.history);
+  }
+
+  Future<bool> _requestAssistantReply(
+    String question,
+    List<ChatMessage> history,
+  ) async {
+    assistantBusy = true;
+    assistantFailure = null;
+    notifyListeners();
+    try {
+      final context = assistantFinancialContext;
+      final response = await _assistantService.generateReply(
+        AiAssistantRequest(
+          question: question,
+          context: context,
+          history: history,
+          scenarioFacts: _assistantContextBuilder.analyzeQuestion(
+            question,
+            context,
+          ),
+        ),
+      );
+      final normalized = response.trim();
+      if (normalized.isEmpty) {
+        throw const AssistantFailure(
+          AssistantFailureKind.emptyResponse,
+          'O assistente retornou uma resposta vazia. Tente novamente.',
+        );
+      }
+      assistantMessages = List.unmodifiable([
+        ...assistantMessages,
+        ChatMessage(author: MessageAuthor.assistant, text: normalized),
+      ]);
+      _assistantRetry = null;
+      return true;
+    } on AssistantFailure catch (failure) {
+      assistantFailure = failure;
+      return false;
+    } catch (_) {
+      assistantFailure = const AssistantFailure(
+        AssistantFailureKind.unknown,
+        'Não foi possível obter uma resposta. Tente novamente.',
+      );
+      return false;
+    } finally {
+      assistantBusy = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> addTransaction(FinancialTransaction transaction) =>
@@ -279,8 +390,28 @@ class AppController extends ChangeNotifier {
     goalsStatus = GoalsStatus.loading;
     transactionsStatus = TransactionsStatus.loading;
     _periodWasSelected = false;
+    _resetAssistantConversation();
     if (nextUser != null) _subscribeUserData(nextUser);
     notifyListeners();
+  }
+
+  void _resetAssistantConversation() {
+    assistantBusy = false;
+    assistantFailure = null;
+    _assistantRetry = null;
+    assistantMessages = List.unmodifiable([
+      ChatMessage(
+        author: MessageAuthor.assistant,
+        text: usesRealAssistant
+            ? 'Olá! Sou o Assistente Axios com IA Gemini. Posso explicar seu '
+                  'resumo financeiro e ajudar a planejar metas. Para responder, '
+                  'envio ao Firebase AI Logic somente totais, categorias e '
+                  'metas resumidas — nunca senhas, PDFs ou dados bancários.'
+            : 'Olá! Este é o modo demonstração do Assistente Axios. As '
+                  'respostas são simuladas e nenhum dado é enviado a uma IA '
+                  'externa.',
+      ),
+    ]);
   }
 
   void _subscribeUserData(AppUser currentUser) {
@@ -364,4 +495,11 @@ class AppController extends ChangeNotifier {
     _transactionsSubscription?.cancel();
     super.dispose();
   }
+}
+
+class _AssistantRetry {
+  const _AssistantRetry(this.question, this.history);
+
+  final String question;
+  final List<ChatMessage> history;
 }

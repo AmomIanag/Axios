@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_colors.dart';
-import '../core/utils/formatters.dart';
-import '../data/mock_financial_data.dart';
 import '../models/chat_message.dart';
-import '../models/goal.dart';
 import '../state/app_controller.dart';
 import '../widgets/screen_header.dart';
 
@@ -20,31 +17,8 @@ class AssistantScreen extends StatefulWidget {
 class _AssistantScreenState extends State<AssistantScreen> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
-  late final List<ChatMessage> _messages;
-
-  @override
-  void initState() {
-    super.initState();
-    final goal = _primaryGoal;
-    _messages = [
-      const ChatMessage(
-        author: MessageAuthor.assistant,
-        text: 'Olá! Como posso ajudar hoje?',
-      ),
-      ChatMessage(
-        author: MessageAuthor.assistant,
-        text:
-            'Esta é uma demonstração com respostas simuladas. Considerando '
-            '${AppFormatters.currency(goal.currentAmount)} já acumulados, guardar '
-            '${AppFormatters.currency(goal.monthlyContribution)} por mês leva a '
-            'meta ${goal.name} a aproximadamente ${goal.monthsToComplete} meses.',
-      ),
-    ];
-  }
-
-  Goal get _primaryGoal => widget.controller.goals.isNotEmpty
-      ? widget.controller.goals.first
-      : MockFinancialData.goals.first;
+  int _lastMessageCount = 0;
+  bool _lastBusy = false;
 
   @override
   void dispose() {
@@ -53,64 +27,44 @@ class _AssistantScreenState extends State<AssistantScreen> {
     super.dispose();
   }
 
-  void _send() {
+  Future<void> _send() async {
     final text = _textController.text.trim();
-    if (text.isEmpty) return;
-    final response = _responseFor(text);
-    setState(() {
-      _messages.add(ChatMessage(author: MessageAuthor.user, text: text));
-      _messages.add(
-        ChatMessage(author: MessageAuthor.assistant, text: response),
-      );
-    });
+    if (text.isEmpty || widget.controller.assistantBusy) return;
     _textController.clear();
+    FocusScope.of(context).unfocus();
+    await widget.controller.sendAssistantMessage(text);
+    if (mounted) _scrollToEnd();
+  }
+
+  Future<void> _retry() async {
+    await widget.controller.retryAssistantMessage();
+    if (mounted) _scrollToEnd();
+  }
+
+  void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOut,
-        );
-      }
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+      );
     });
   }
 
-  String _responseFor(String input) {
-    final normalized = input.toLowerCase();
-    final goal = _primaryGoal;
-    final summary = widget.controller.financialSummary;
-    final monthMatch = RegExp(r'(\d+)\s*mes').firstMatch(normalized);
-    if (monthMatch != null &&
-        (normalized.contains('meta') || normalized.contains('viag'))) {
-      final months = int.tryParse(monthMatch.group(1) ?? '') ?? 1;
-      final needed = goal.monthlyNeededFor(months);
-      final remainingMargin = summary.availableBalance - needed;
-      return 'Para atingir ${AppFormatters.currency(goal.targetAmount)} em '
-          '$months meses, considerando os '
-          '${AppFormatters.currency(goal.currentAmount)} já acumulados, você '
-          'precisa guardar ${AppFormatters.currency(needed)} por mês. Sua margem '
-          'estimada ficaria em ${AppFormatters.currency(remainingMargin)}.';
-    }
-    if (normalized.contains('gasto') || normalized.contains('econom')) {
-      final categories = widget.controller.expensesByCategory;
-      if (categories.isEmpty) {
-        return 'Ainda não há despesas no período selecionado para comparar. '
-            'Esta resposta é simulada e não utiliza IA externa.';
-      }
-      final topCategory = categories.entries.reduce(
-        (a, b) => a.value >= b.value ? a : b,
-      );
-      return '${topCategory.key} é sua maior categoria simulada, com '
-          '${AppFormatters.cents(topCategory.value)}. Posso demonstrar um '
-          'cenário de redução, mas esta versão não usa IA externa.';
-    }
-    return 'Resposta simulada: sua sobra estimada é '
-        '${AppFormatters.currency(summary.availableBalance)}. Pergunte, por '
-        'exemplo, em quantos meses pode alcançar a meta ${goal.name}.';
+  void _scheduleScrollWhenConversationChanges() {
+    final messageCount = widget.controller.assistantMessages.length;
+    final busy = widget.controller.assistantBusy;
+    if (messageCount == _lastMessageCount && busy == _lastBusy) return;
+    _lastMessageCount = messageCount;
+    _lastBusy = busy;
+    _scrollToEnd();
   }
 
   @override
   Widget build(BuildContext context) {
+    _scheduleScrollWhenConversationChanges();
+    final controller = widget.controller;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
@@ -137,7 +91,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
                       borderRadius: BorderRadius.circular(99),
                     ),
                     child: Text(
-                      'Respostas simuladas',
+                      controller.usesRealAssistant
+                          ? 'IA real · ${controller.assistantModelName}'
+                          : 'Respostas simuladas',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.graphite,
                         fontWeight: FontWeight.w600,
@@ -145,31 +101,88 @@ class _AssistantScreenState extends State<AssistantScreen> {
                     ),
                   ),
                 ),
+                if (controller.usesRealAssistant) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'O assistente recebe somente resumos financeiros '
+                    'necessários para responder.',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: AppColors.gray),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 Expanded(
                   child: ListView.separated(
                     key: const ValueKey('chat-list'),
                     controller: _scrollController,
                     padding: const EdgeInsets.only(bottom: 12),
-                    itemCount: _messages.length,
+                    itemCount:
+                        controller.assistantMessages.length +
+                        (controller.assistantBusy ? 1 : 0),
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) =>
-                        _MessageBubble(message: _messages[index]),
+                    itemBuilder: (context, index) {
+                      if (index == controller.assistantMessages.length) {
+                        return const _AssistantTypingBubble();
+                      }
+                      return _MessageBubble(
+                        message: controller.assistantMessages[index],
+                      );
+                    },
                   ),
                 ),
+                if (controller.assistantFailure case final failure?) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    key: const ValueKey('assistant-error'),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.danger.withValues(alpha: 0.28),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: AppColors.danger,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            failure.message,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        TextButton(
+                          key: const ValueKey('assistant-retry'),
+                          onPressed: controller.assistantBusy ? null : _retry,
+                          child: const Text('Tentar novamente'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 TextField(
                   key: const ValueKey('assistant-input'),
                   controller: _textController,
+                  enabled: !controller.assistantBusy,
                   textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _send(),
+                  onSubmitted: controller.assistantBusy ? null : (_) => _send(),
                   decoration: InputDecoration(
                     hintText: 'Digite sua mensagem...',
                     suffixIcon: IconButton(
                       key: const ValueKey('assistant-send'),
                       tooltip: 'Enviar mensagem',
-                      onPressed: _send,
-                      icon: const Icon(Icons.send_rounded),
+                      onPressed: controller.assistantBusy ? null : _send,
+                      icon: controller.assistantBusy
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send_rounded),
                       color: AppColors.graphite,
                       style: IconButton.styleFrom(
                         backgroundColor: AppColors.gold,
@@ -184,6 +197,30 @@ class _AssistantScreenState extends State<AssistantScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AssistantTypingBubble extends StatelessWidget {
+  const _AssistantTypingBubble();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        key: const ValueKey('assistant-loading'),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const SizedBox(
+          width: 44,
+          child: LinearProgressIndicator(minHeight: 3),
         ),
       ),
     );

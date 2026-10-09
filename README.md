@@ -6,10 +6,10 @@ O Axios é um aplicativo acadêmico de planejamento financeiro em Flutter. A
 proposta é transformar movimentações financeiras em uma visão clara de receitas,
 despesas, resultado mensal e planos alcançáveis para metas pessoais.
 
-## Status — CP6, Etapa 1
+## Status — CP6, Etapa 2
 
-A primeira etapa do Checkpoint 6 evolui o protótipo do CP5 para um gerenciador
-financeiro funcional:
+O Axios mantém o gerenciador financeiro entregue na Etapa 1 e passa a incluir a
+arquitetura do Assistente Axios com IA generativa real:
 
 - CRUD de receitas e despesas, com data, categoria, busca e filtros;
 - valores monetários de transações armazenados em centavos inteiros;
@@ -22,13 +22,80 @@ financeiro funcional:
 - motor financeiro puro e testável;
 - backend Node/TypeScript protegido por Firebase ID Token para o Pluggy Sandbox;
 - Pluggy Connect preparado para Android pelo SDK oficial;
-- assistente determinístico preservado, sem IA generativa.
+- Assistente Axios integrado ao SDK oficial `firebase_ai`;
+- Gemini Developer API por meio do Firebase AI Logic;
+- contexto financeiro agregado e recalculado a cada pergunta;
+- cálculos determinísticos fornecidos pelo motor financeiro à IA;
+- histórico curto em memória, loading, erros compreensíveis e retry;
+- App Check preparado para Android e Web;
+- modo demonstração explicitamente separado da IA real.
 
 Autenticação e metas foram validadas manualmente no Firebase no CP5. O código e
 as regras das transações foram implementados nesta etapa, mas ainda precisam ser
 publicados e validados no projeto Firebase. A conexão Pluggy real também depende
 de credenciais Development válidas e de um backend HTTPS acessível ao aparelho;
-portanto, ela não é apresentada como validada de ponta a ponta.
+portanto, ela não é apresentada como validada de ponta a ponta. A integração
+Gemini também exige concluir o fluxo do Firebase AI Logic e registrar os
+provedores do App Check no Firebase Console antes do teste real.
+
+## Assistente Axios com IA real
+
+Na execução Firebase, o `AppController` usa
+`FirebaseGeminiAssistantService`, que acessa a Gemini Developer API por meio do
+Firebase AI Logic. A tela não chama o SDK diretamente. O modelo padrão é o
+`gemini-3.8-flash`, versão Flash estável indicada para conversas textuais e
+disponível para uso básico no plano Spark conforme os limites da modalidade
+gratuita.
+
+O modelo pode ser substituído sem editar o código:
+
+```powershell
+C:\devflutter\flutter\bin\flutter.bat run -d edge `
+  --dart-define=AXIOS_GEMINI_MODEL=gemini-3.8-flash
+```
+
+Uma solicitação só é enviada depois de uma ação do usuário. Não há chamadas ao
+abrir ou reconstruir a tela, tentativas automáticas em loop ou fallback
+silencioso para respostas fictícias. O histórico fica apenas em memória e é
+limitado antes de cada requisição.
+
+### Contexto financeiro e cálculos
+
+`FinancialAssistantContextBuilder` monta um resumo atualizado contendo:
+
+- mês selecionado;
+- receitas, despesas, resultado líquido e capacidade estimada de poupança;
+- despesas agregadas por categoria;
+- quantidade e totais de lançamentos pendentes;
+- metas, acumulado, objetivo, restante, progresso e prazo;
+- valor mensal necessário, prazo estimado e viabilidade do orçamento.
+
+Transações marcadas como excluídas do orçamento seguem a mesma regra do
+Dashboard. O contexto não contém e-mail, UID, descrições individuais,
+identificadores bancários, tokens ou o PDF original. Nomes de metas são
+limitados e tratados como dados, não como instruções.
+
+O Gemini não é a fonte dos números. `FinancialEngine` continua calculando todos
+os totais e projeções em centavos inteiros. Perguntas reconhecidas sobre prazo,
+aporte mensal ou objetivo hipotético recebem também fatos calculados em Dart;
+quando faltam informações, o modelo é instruído a declarar a limitação.
+
+### Modo demonstração
+
+O modo iniciado com `AXIOS_DEMO_MODE=true` injeta
+`DemoAssistantService`, que usa somente respostas determinísticas e exibe o selo
+**Respostas simuladas**. A execução normal injeta o serviço Gemini e exibe o
+modelo utilizado. Falhas de rede, timeout, quota, modelo indisponível, API não
+habilitada, resposta vazia e bloqueio do App Check são mostrados ao usuário com
+uma ação de nova tentativa.
+
+### Privacidade
+
+Os resumos financeiros necessários e a pergunta digitada são enviados ao
+Firebase AI Logic/Google para gerar a resposta. O Axios não envia senhas,
+credenciais, documentos PDF ou transações completas e não grava a conversa no
+Firestore nesta versão. O uso permanece sujeito aos termos e às cotas do
+provedor selecionado.
 
 ## Capturas de tela — Checkpoint 5
 
@@ -220,6 +287,8 @@ backend indisponível são tratados como falha; o app não simula sucesso.
 | Firebase Authentication | Cadastro, sessão, login e logout |
 | Cloud Firestore | Metas e transações isoladas por UID |
 | `ChangeNotifier` | Estado simples no `AppController` |
+| `firebase_ai` 4.0.0 | Firebase AI Logic e Gemini Developer API |
+| `firebase_app_check` | Proteção das chamadas de IA no Android e Web |
 | `file_picker` | Seleção de PDF em Android e Web |
 | `pdfrx` | Extração local de texto selecionável em PDF |
 | `crypto` | Hash SHA-256 de lotes e lançamentos |
@@ -241,6 +310,10 @@ lib/
   repositories/               # contratos, Firestore e implementações em memória
   services/
     financial_engine.dart      # cálculos puros
+    financial_assistant_context_builder.dart # contexto agregado e cenários
+    ai_assistant_service.dart  # contrato e implementação demonstrativa
+    firebase_gemini_assistant_service.dart # Gemini via Firebase AI Logic
+    app_check_bootstrap.dart   # provedores de atestação por plataforma
     statement_import.dart      # seleção, extração, parser e preparação
     pluggy_service.dart        # cliente autenticado do backend
   state/app_controller.dart    # sessão, streams, comandos e período
@@ -268,8 +341,10 @@ firestore.rules                # menor privilégio por UID e validação de camp
   gravados, mas os cálculos novos convertem os valores para centavos quando
   precisam de exatidão.
 - A integração privilegiada da Pluggy fica fora do cliente.
-- O assistente continua determinístico para ser substituído com segurança na
-  Etapa 2.
+- O assistente real é injetado somente no modo Firebase; testes e modo demo usam
+  uma implementação determinística sem rede.
+- O histórico do chat permanece em memória e é limpo quando a identidade
+  autenticada muda, evitando mistura entre usuários.
 
 ## Configuração Firebase
 
@@ -281,6 +356,61 @@ novo ambiente:
 3. crie o Cloud Firestore;
 4. publique `firestore.rules` no projeto correto;
 5. valide cadastro, metas e transações com um usuário de teste.
+
+### Ativar Firebase AI Logic e App Check
+
+Nenhuma chave Gemini deve ser adicionada ao Flutter. No projeto
+`axios-finance`:
+
+1. abra **Firebase Console → AI Services → AI Logic**;
+2. clique em **Get started**;
+3. selecione **Gemini Developer API** para permanecer compatível com o plano
+   Spark e sua modalidade gratuita limitada;
+4. conclua a habilitação das APIs sugeridas pelo assistente do Firebase;
+5. em **Security → App Check**, registre o aplicativo Android com Play
+   Integrity usando o SHA-256 do certificado de assinatura, e registre o
+   aplicativo Web com uma chave baseada em pontuação do reCAPTCHA Enterprise;
+6. confirme que o App Check está aplicado ao Firebase AI Logic antes da
+   disponibilização a usuários finais.
+
+Não escolha Agent Platform/Vertex AI nesta entrega, pois essa opção exige o
+plano Blaze. Modelos ou recursos que exigem faturamento também ficam fora do
+escopo.
+
+Para desenvolvimento Android, use explicitamente o provedor de depuração:
+
+```powershell
+C:\devflutter\flutter\bin\flutter.bat run -d <id-do-dispositivo> `
+  --dart-define=AXIOS_APP_CHECK_DEBUG=true
+```
+
+Copie o token exibido no log, registre-o em **App Check → Apps → Manage debug
+tokens** e reinicie o app. Opcionalmente, o token pode ser fornecido por
+`AXIOS_APP_CHECK_DEBUG_TOKEN` somente no ambiente local; não o versione.
+
+No Edge, o fluxo de desenvolvimento é equivalente:
+
+```powershell
+C:\devflutter\flutter\bin\flutter.bat run -d edge `
+  --dart-define=AXIOS_APP_CHECK_DEBUG=true
+```
+
+Registre no Console o token mostrado nas ferramentas do navegador. Para uma
+implantação Web, forneça a chave pública do site reCAPTCHA Enterprise:
+
+```powershell
+C:\devflutter\flutter\bin\flutter.bat build web `
+  --dart-define=AXIOS_APP_CHECK_WEB_SITE_KEY=<chave-publica-do-site>
+```
+
+Provedores de depuração só são selecionados quando a flag explícita está ativa
+e o Flutter está em modo debug. Builds release usam Play Integrity no Android e
+jamais ativam automaticamente um bypass de App Check.
+
+Depois da configuração, entre com um usuário de teste, abra **Assistente** e
+envie uma pergunta simples, como “Qual foi minha maior categoria de gastos no
+mês?”. Confirme a resposta e as métricas no painel do AI Logic sem registrar o
+prompt financeiro em logs.
 
 Depois de confirmar o projeto ativo no Firebase CLI, publique somente as regras:
 
@@ -363,8 +493,14 @@ Os testes incluem:
 - CRUD e aportes de metas;
 - navegação e regressão de ciclo de vida dos bottom sheets;
 - autenticação e autorização dos endpoints Pluggy com dependências falsas.
+- agregação e minimização do contexto enviado ao assistente;
+- cenários financeiros calculados antes da chamada ao modelo;
+- loading, envio duplicado, rede, quota, resposta vazia e retry;
+- atualização do contexto após transações e metas;
+- persistência da conversa ao alternar abas e separação entre demo e IA real.
 
-Testes automatizados não escrevem no Firebase real nem chamam a Pluggy real.
+Testes automatizados não escrevem no Firebase real, não chamam a Pluggy real e
+não fazem requisições ao Gemini.
 
 Validação local desta entrega:
 
@@ -372,7 +508,7 @@ Validação local desta entrega:
 | --- | --- |
 | `dart format .` | concluído |
 | `flutter analyze` | nenhuma ocorrência |
-| `flutter test` | 32 testes aprovados |
+| `flutter test` | 49 testes aprovados |
 | `flutter build web` | concluído em `build/web` |
 | `flutter build apk --debug` | concluído em `build/app/outputs/flutter-apk/app-debug.apk` |
 | `npm run check` / `npm run build` | concluídos |
@@ -380,12 +516,13 @@ Validação local desta entrega:
 | Android físico | pendente; nenhum dispositivo estava conectado |
 | Firebase das transações | pendente de publicar regras e validar manualmente |
 | Pluggy ponta a ponta | pendente de credenciais e backend HTTPS |
+| Gemini ponta a ponta | pendente de habilitar AI Logic e registrar App Check |
 
 O build Android emitiu um aviso futuro sobre plugins Firebase que ainda aplicam
 o Kotlin Gradle Plugin. Ele não impediu o APK atual, mas deve ser acompanhado em
 atualizações do FlutterFire. Build não substitui QA em aparelho físico.
 
-## Limitações conhecidas e Etapa 2
+## Limitações conhecidas e próximos passos
 
 - As regras novas ainda precisam ser publicadas e validadas no Firebase.
 - Pluggy exige credenciais Development, trial ativo e backend HTTPS hospedado.
@@ -394,12 +531,19 @@ atualizações do FlutterFire. Build não substitui QA em aparelho físico.
   universal a bancos.
 - A detecção de transferências internas depende dos metadados fornecidos pela
   instituição e deve ser revisada pelo usuário.
-- O Assistente Axios ainda usa respostas simuladas.
+- Firebase AI Logic e App Check ainda precisam ser habilitados e validados no
+  projeto `axios-finance`; a integração real não foi testada ponta a ponta nesta
+  entrega.
+- A modalidade gratuita da Gemini Developer API possui limites e pode retornar
+  erros de quota ou indisponibilidade.
+- O histórico do assistente é mantido apenas durante a sessão local e não é
+  sincronizado entre dispositivos.
 - Notificações, observabilidade, migração avançada e APK release pertencem aos
   próximos refinamentos.
 
-Na Etapa 2 estão previstos Gemini, limites e transparência da IA, refinamentos de
-acessibilidade, QA Android completo, backend hospedado e APK release assinado.
+Os próximos passos são validar o Gemini em Edge e Android com App Check,
+refinar acessibilidade, hospedar o backend Pluggy, concluir QA Android e gerar o
+APK release assinado.
 
 ## Identidade visual
 

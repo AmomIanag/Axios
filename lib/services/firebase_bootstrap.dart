@@ -2,12 +2,18 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../firebase_options.dart';
+import 'app_check_bootstrap.dart';
 
 class FirebaseBootstrapResult {
-  const FirebaseBootstrapResult({required this.available, this.message});
+  const FirebaseBootstrapResult({
+    required this.available,
+    this.message,
+    this.appCheckActive = false,
+  });
 
   final bool available;
   final String? message;
+  final bool appCheckActive;
 }
 
 abstract final class FirebaseBootstrap {
@@ -18,7 +24,12 @@ abstract final class FirebaseBootstrap {
           options: DefaultFirebaseOptions.currentPlatform,
         );
       }
-      return const FirebaseBootstrapResult(available: true);
+      final appCheck = await AppCheckBootstrap.initialize();
+      return FirebaseBootstrapResult(
+        available: true,
+        message: appCheck.message,
+        appCheckActive: appCheck.active,
+      );
     } catch (error, stackTrace) {
       if (kDebugMode) {
         debugPrint('Falha ao inicializar o Firebase: $error');
