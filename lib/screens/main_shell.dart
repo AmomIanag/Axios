@@ -23,7 +23,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final screens = [
       DashboardScreen(controller: widget.controller),
-      const TransactionsScreen(),
+      TransactionsScreen(controller: widget.controller),
       GoalsScreen(controller: widget.controller),
       AssistantScreen(controller: widget.controller),
     ];

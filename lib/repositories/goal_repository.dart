@@ -5,5 +5,9 @@ abstract interface class GoalRepository {
 
   Future<void> addGoal(String userId, Goal goal);
 
+  Future<void> updateGoal(String userId, Goal goal);
+
+  Future<void> deleteGoal(String userId, String goalId);
+
   Future<void> seedDefaultsIfEmpty(String userId, List<Goal> defaults);
 }

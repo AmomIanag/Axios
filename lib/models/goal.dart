@@ -19,6 +19,12 @@ class Goal {
   final double monthlyContribution;
   final DateTime createdAt;
 
+  int get currentAmountInCents => (currentAmount * 100).round();
+  int get targetAmountInCents => (targetAmount * 100).round();
+  int get monthlyContributionInCents => (monthlyContribution * 100).round();
+  int get remainingAmountInCents =>
+      math.max(0, targetAmountInCents - currentAmountInCents);
+
   double get remainingAmount => math.max(0, targetAmount - currentAmount);
 
   double get progress {
@@ -39,13 +45,21 @@ class Goal {
     return (remainingAmount / monthlyContribution).ceil();
   }
 
-  Goal copyWith({String? id}) => Goal(
+  Goal copyWith({
+    String? id,
+    String? name,
+    double? currentAmount,
+    double? targetAmount,
+    int? deadlineMonths,
+    double? monthlyContribution,
+    DateTime? createdAt,
+  }) => Goal(
     id: id ?? this.id,
-    name: name,
-    currentAmount: currentAmount,
-    targetAmount: targetAmount,
-    deadlineMonths: deadlineMonths,
-    monthlyContribution: monthlyContribution,
-    createdAt: createdAt,
+    name: name ?? this.name,
+    currentAmount: currentAmount ?? this.currentAmount,
+    targetAmount: targetAmount ?? this.targetAmount,
+    deadlineMonths: deadlineMonths ?? this.deadlineMonths,
+    monthlyContribution: monthlyContribution ?? this.monthlyContribution,
+    createdAt: createdAt ?? this.createdAt,
   );
 }

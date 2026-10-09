@@ -78,7 +78,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   String _responseFor(String input) {
     final normalized = input.toLowerCase();
     final goal = _primaryGoal;
-    final summary = MockFinancialData.summary;
+    final summary = widget.controller.financialSummary;
     final monthMatch = RegExp(r'(\d+)\s*mes').firstMatch(normalized);
     if (monthMatch != null &&
         (normalized.contains('meta') || normalized.contains('viag'))) {
@@ -92,11 +92,16 @@ class _AssistantScreenState extends State<AssistantScreen> {
           'estimada ficaria em ${AppFormatters.currency(remainingMargin)}.';
     }
     if (normalized.contains('gasto') || normalized.contains('econom')) {
-      final topCategory = MockFinancialData.expensesByCategory.entries.reduce(
+      final categories = widget.controller.expensesByCategory;
+      if (categories.isEmpty) {
+        return 'Ainda não há despesas no período selecionado para comparar. '
+            'Esta resposta é simulada e não utiliza IA externa.';
+      }
+      final topCategory = categories.entries.reduce(
         (a, b) => a.value >= b.value ? a : b,
       );
       return '${topCategory.key} é sua maior categoria simulada, com '
-          '${AppFormatters.currency(topCategory.value)}. Posso demonstrar um '
+          '${AppFormatters.cents(topCategory.value)}. Posso demonstrar um '
           'cenário de redução, mas esta versão não usa IA externa.';
     }
     return 'Resposta simulada: sua sobra estimada é '

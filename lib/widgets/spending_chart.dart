@@ -7,13 +7,13 @@ import 'app_card.dart';
 class SpendingChart extends StatelessWidget {
   const SpendingChart({super.key, required this.values});
 
-  final Map<String, double> values;
+  final Map<String, int> values;
 
   @override
   Widget build(BuildContext context) {
     final entries = values.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final maxValue = entries.isEmpty ? 1.0 : entries.first.value;
+    final maxValue = entries.isEmpty ? 1 : entries.first.value;
     return AppCard(
       child: SizedBox(
         height: 176,
@@ -28,7 +28,7 @@ class SpendingChart extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
-                      AppFormatters.compactCurrency(entry.value),
+                      AppFormatters.compactCurrency(entry.value / 100),
                       maxLines: 1,
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(fontSize: 10),
@@ -36,7 +36,7 @@ class SpendingChart extends StatelessWidget {
                     const SizedBox(height: 4),
                     Semantics(
                       label:
-                          '${entry.key}: ${AppFormatters.currency(entry.value)}',
+                          '${entry.key}: ${AppFormatters.cents(entry.value)}',
                       child: Container(
                         height: 96 * ratio + 12,
                         decoration: BoxDecoration(

@@ -3,6 +3,7 @@ import 'package:axios/models/app_user.dart';
 import 'package:axios/models/goal.dart';
 import 'package:axios/repositories/auth_repository.dart';
 import 'package:axios/repositories/goal_repository.dart';
+import 'package:axios/repositories/in_memory_transaction_repository.dart';
 import 'package:axios/services/firebase_bootstrap.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -48,6 +49,7 @@ void main() {
             const FirebaseBootstrapResult(available: true),
         createAuthRepository: () => _FakeAuthRepository(initialUser: user),
         createGoalRepository: _FakeGoalRepository.new,
+        createTransactionRepository: InMemoryTransactionRepository.new,
       );
       addTearDown(dependencies.controller.dispose);
 
@@ -74,6 +76,7 @@ void main() {
           signInError: FirebaseAuthException(code: 'invalid-credential'),
         ),
         createGoalRepository: _FakeGoalRepository.new,
+        createTransactionRepository: InMemoryTransactionRepository.new,
       );
       addTearDown(dependencies.controller.dispose);
 
@@ -95,6 +98,7 @@ void main() {
           registerError: FirebaseAuthException(code: 'email-already-in-use'),
         ),
         createGoalRepository: _FakeGoalRepository.new,
+        createTransactionRepository: InMemoryTransactionRepository.new,
       );
       addTearDown(dependencies.controller.dispose);
 
@@ -147,6 +151,12 @@ class _FakeAuthRepository implements AuthRepository {
 class _FakeGoalRepository implements GoalRepository {
   @override
   Future<void> addGoal(String userId, Goal goal) async {}
+
+  @override
+  Future<void> updateGoal(String userId, Goal goal) async {}
+
+  @override
+  Future<void> deleteGoal(String userId, String goalId) async {}
 
   @override
   Future<void> seedDefaultsIfEmpty(String userId, List<Goal> defaults) async {}

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/formatters.dart';
 import '../models/goal.dart';
+import '../models/money.dart';
 import '../state/app_controller.dart';
 import '../widgets/app_card.dart';
 import '../widgets/goal_card.dart';
@@ -55,45 +56,83 @@ class GoalsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildState(BuildContext context) {
-    return switch (controller.goalsStatus) {
-      GoalsStatus.loading => const Padding(
-        padding: EdgeInsets.all(48),
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      GoalsStatus.error => _GoalsMessage(
-        icon: Icons.cloud_off_rounded,
-        title: controller.goalsError ?? 'Não foi possível carregar suas metas.',
-      ),
-      GoalsStatus.empty => const _GoalsMessage(
-        icon: Icons.flag_outlined,
-        title: 'Você ainda não tem metas.',
-        subtitle: 'Crie a primeira para montar seu plano.',
-      ),
-      GoalsStatus.loaded => _GoalsList(goals: controller.goals),
-    };
-  }
+  Widget _buildState(BuildContext context) => switch (controller.goalsStatus) {
+    GoalsStatus.loading => const Padding(
+      padding: EdgeInsets.all(48),
+      child: Center(child: CircularProgressIndicator()),
+    ),
+    GoalsStatus.error => _GoalsMessage(
+      icon: Icons.cloud_off_rounded,
+      title: controller.goalsError ?? 'Não foi possível carregar suas metas.',
+    ),
+    GoalsStatus.empty => const _GoalsMessage(
+      icon: Icons.flag_outlined,
+      title: 'Você ainda não tem metas.',
+      subtitle: 'Crie a primeira para montar seu plano.',
+    ),
+    GoalsStatus.loaded => _GoalsList(
+      controller: controller,
+      goals: controller.goals,
+      onEdit: (goal) => _showGoalForm(context, goal),
+      onContribution: (goal) => _showContribution(context, goal),
+      onDelete: (goal) => _confirmDelete(context, goal),
+    ),
+  };
 
-  Future<void> _showGoalForm(BuildContext context) async {
-    await showModalBottomSheet<void>(
+  Future<void> _showGoalForm(BuildContext context, [Goal? goal]) =>
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.background,
+        builder: (_) => _GoalFormSheet(controller: controller, goal: goal),
+      );
+
+  Future<void> _showContribution(BuildContext context, Goal goal) =>
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.background,
+        builder: (_) => _ContributionSheet(controller: controller, goal: goal),
+      );
+
+  Future<void> _confirmDelete(BuildContext context, Goal goal) async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.background,
-      builder: (_) => _NewGoalSheet(controller: controller),
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir meta?'),
+        content: Text('A meta “${goal.name}” será removida permanentemente.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final success = await controller.deleteGoal(goal.id);
+    if (!context.mounted || success) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(controller.goalsError ?? 'Erro ao excluir meta.')),
     );
   }
 }
 
-class _NewGoalSheet extends StatefulWidget {
-  const _NewGoalSheet({required this.controller});
+class _GoalFormSheet extends StatefulWidget {
+  const _GoalFormSheet({required this.controller, this.goal});
 
   final AppController controller;
+  final Goal? goal;
 
   @override
-  State<_NewGoalSheet> createState() => _NewGoalSheetState();
+  State<_GoalFormSheet> createState() => _GoalFormSheetState();
 }
 
-class _NewGoalSheetState extends State<_NewGoalSheet> {
+class _GoalFormSheetState extends State<_GoalFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _currentController;
@@ -104,10 +143,17 @@ class _NewGoalSheetState extends State<_NewGoalSheet> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    _currentController = TextEditingController(text: '0');
-    _targetController = TextEditingController();
-    _monthsController = TextEditingController(text: '12');
+    final goal = widget.goal;
+    _nameController = TextEditingController(text: goal?.name);
+    _currentController = TextEditingController(
+      text: goal?.currentAmount.toStringAsFixed(2) ?? '0',
+    );
+    _targetController = TextEditingController(
+      text: goal?.targetAmount.toStringAsFixed(2),
+    );
+    _monthsController = TextEditingController(
+      text: goal?.deadlineMonths.toString() ?? '12',
+    );
   }
 
   @override
@@ -121,32 +167,44 @@ class _NewGoalSheetState extends State<_NewGoalSheet> {
 
   Future<void> _save() async {
     if (_saving || !(_formKey.currentState?.validate() ?? false)) return;
-
-    final current = _parseMoney(_currentController.text);
-    final target = _parseMoney(_targetController.text);
-    if (current >= target) {
+    final current = Money.tryParseUserInput(_currentController.text)!;
+    final target = Money.tryParseUserInput(_targetController.text)!;
+    if (current.cents > target.cents) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('O objetivo deve ser maior que o valor acumulado.'),
+          content: Text('O acumulado não pode superar o objetivo.'),
         ),
       );
       return;
     }
 
     setState(() => _saving = true);
-    final saved = await widget.controller.addGoal(
-      name: _nameController.text,
-      currentAmount: current,
-      targetAmount: target,
-      deadlineMonths: int.parse(_monthsController.text),
-    );
+    final existing = widget.goal;
+    final saved = existing == null
+        ? await widget.controller.addGoal(
+            name: _nameController.text,
+            currentAmount: current.asDouble,
+            targetAmount: target.asDouble,
+            deadlineMonths: int.parse(_monthsController.text),
+          )
+        : await widget.controller.updateGoal(
+            goal: existing,
+            name: _nameController.text,
+            currentAmount: current.asDouble,
+            targetAmount: target.asDouble,
+            deadlineMonths: int.parse(_monthsController.text),
+          );
     if (!mounted) return;
-
     if (saved) {
       Navigator.of(context).pop();
       return;
     }
     setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(widget.controller.goalsError ?? 'Erro ao salvar meta.'),
+      ),
+    );
   }
 
   @override
@@ -167,7 +225,7 @@ class _NewGoalSheetState extends State<_NewGoalSheet> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Nova meta',
+                  widget.goal == null ? 'Nova meta' : 'Editar meta',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 20),
@@ -193,7 +251,12 @@ class _NewGoalSheetState extends State<_NewGoalSheet> {
                     labelText: 'Valor já acumulado',
                     prefixText: r'R$ ',
                   ),
-                  validator: _validateMoney,
+                  validator: (value) {
+                    final money = Money.tryParseUserInput(value ?? '');
+                    return money == null || money.cents < 0
+                        ? 'Informe um valor válido.'
+                        : null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -207,7 +270,12 @@ class _NewGoalSheetState extends State<_NewGoalSheet> {
                     labelText: 'Valor objetivo',
                     prefixText: r'R$ ',
                   ),
-                  validator: _validateMoney,
+                  validator: (value) {
+                    final money = Money.tryParseUserInput(value ?? '');
+                    return money == null || money.cents <= 0
+                        ? 'Informe um valor maior que zero.'
+                        : null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -243,35 +311,162 @@ class _NewGoalSheetState extends State<_NewGoalSheet> {
       ),
     );
   }
+}
 
-  String? _validateMoney(String? value) =>
-      _parseMoney(value ?? '') <= 0 ? 'Informe um valor maior que zero.' : null;
+class _ContributionSheet extends StatefulWidget {
+  const _ContributionSheet({required this.controller, required this.goal});
 
-  double _parseMoney(String value) {
-    final trimmed = value.trim();
-    final normalized = trimmed.contains(',')
-        ? trimmed.replaceAll('.', '').replaceAll(',', '.')
-        : trimmed;
-    return double.tryParse(normalized) ?? 0;
+  final AppController controller;
+  final Goal goal;
+
+  @override
+  State<_ContributionSheet> createState() => _ContributionSheetState();
+}
+
+class _ContributionSheetState extends State<_ContributionSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
   }
+
+  Future<void> _save() async {
+    if (_saving || !(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _saving = true);
+    final amount = Money.tryParseUserInput(_amountController.text)!;
+    final saved = await widget.controller.addGoalContribution(
+      widget.goal,
+      amount.asDouble,
+    );
+    if (!mounted) return;
+    if (saved) {
+      Navigator.pop(context);
+      return;
+    }
+    setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(widget.controller.goalsError ?? 'Erro ao salvar aporte.'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        24,
+        24,
+        MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Registrar aporte',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 8),
+            Text('Meta: ${widget.goal.name}'),
+            const SizedBox(height: 16),
+            TextFormField(
+              key: const ValueKey('goal-contribution-field'),
+              controller: _amountController,
+              enabled: !_saving,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Valor do aporte',
+                prefixText: r'R$ ',
+              ),
+              validator: (value) {
+                final money = Money.tryParseUserInput(value ?? '');
+                return money == null || money.cents <= 0
+                    ? 'Informe um valor maior que zero.'
+                    : null;
+              },
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              key: const ValueKey('save-contribution-button'),
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox.square(
+                      dimension: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Registrar aporte'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _GoalsList extends StatelessWidget {
-  const _GoalsList({required this.goals});
+  const _GoalsList({
+    required this.controller,
+    required this.goals,
+    required this.onEdit,
+    required this.onContribution,
+    required this.onDelete,
+  });
 
+  final AppController controller;
   final List<Goal> goals;
+  final ValueChanged<Goal> onEdit;
+  final ValueChanged<Goal> onContribution;
+  final ValueChanged<Goal> onDelete;
 
   @override
   Widget build(BuildContext context) {
     final featured = goals.first;
+    final neededInCents = featured.deadlineMonths <= 0
+        ? featured.remainingAmountInCents
+        : (featured.remainingAmountInCents / featured.deadlineMonths).ceil();
+    final insufficient =
+        neededInCents > controller.estimatedSavingCapacityInCents;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var index = 0; index < goals.length; index++) ...[
           GoalCard(goal: goals[index]),
-          if (index < goals.length - 1) const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: goals[index].remainingAmountInCents == 0
+                    ? null
+                    : () => onContribution(goals[index]),
+                icon: const Icon(Icons.savings_outlined),
+                label: const Text('Aporte'),
+              ),
+              IconButton(
+                tooltip: 'Editar meta',
+                onPressed: () => onEdit(goals[index]),
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              IconButton(
+                tooltip: 'Excluir meta',
+                onPressed: () => onDelete(goals[index]),
+                icon: const Icon(Icons.delete_outline_rounded),
+              ),
+            ],
+          ),
+          if (index < goals.length - 1) const SizedBox(height: 8),
         ],
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         AppCard(
           color: AppColors.goldSoft,
           child: Column(
@@ -284,17 +479,29 @@ class _GoalsList extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '${AppFormatters.currency(featured.monthlyContribution)} por mês',
+                '${AppFormatters.cents(neededInCents)} por mês',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
               Text(
-                'Considerando os ${AppFormatters.currency(featured.currentAmount)} '
-                'já acumulados, faltam ${AppFormatters.currency(featured.remainingAmount)}. '
-                'Nesse ritmo, a meta pode ser alcançada em '
-                '${featured.monthsToComplete} meses.',
+                featured.remainingAmountInCents == 0
+                    ? 'Meta concluída. O objetivo já foi integralmente acumulado.'
+                    : 'Considerando os ${AppFormatters.currency(featured.currentAmount)} '
+                          'já acumulados, faltam ${AppFormatters.currency(featured.remainingAmount)}.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+              if (insufficient && featured.remainingAmountInCents > 0) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'O valor mensal necessário supera a capacidade estimada de '
+                  '${AppFormatters.cents(controller.estimatedSavingCapacityInCents)} '
+                  'no período selecionado.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -312,20 +519,18 @@ class _GoalsMessage extends StatelessWidget {
   final String? subtitle;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        children: [
-          Icon(icon, size: 48, color: AppColors.gray),
-          const SizedBox(height: 12),
-          Text(title, textAlign: TextAlign.center),
-          if (subtitle != null) ...[
-            const SizedBox(height: 4),
-            Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
-          ],
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(32),
+    child: Column(
+      children: [
+        Icon(icon, size: 48, color: AppColors.gray),
+        const SizedBox(height: 12),
+        Text(title, textAlign: TextAlign.center),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
         ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }

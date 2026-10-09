@@ -141,7 +141,7 @@ Future<void> _openAndFillGoalForm(
     await tester.tap(find.byKey(const ValueKey('save-goal-button')));
     await tester.pump();
     expect(find.text('Informe o nome da meta.'), findsOneWidget);
-    expect(find.text('Informe um valor maior que zero.'), findsNWidgets(2));
+    expect(find.text('Informe um valor maior que zero.'), findsOneWidget);
   }
   await tester.enterText(find.byKey(const ValueKey('goal-name-field')), name);
   await tester.enterText(

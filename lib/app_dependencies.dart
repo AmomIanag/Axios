@@ -7,8 +7,11 @@ import 'repositories/auth_repository.dart';
 import 'repositories/demo_auth_repository.dart';
 import 'repositories/firebase_auth_repository.dart';
 import 'repositories/firestore_goal_repository.dart';
+import 'repositories/firestore_transaction_repository.dart';
 import 'repositories/goal_repository.dart';
 import 'repositories/in_memory_goal_repository.dart';
+import 'repositories/in_memory_transaction_repository.dart';
+import 'repositories/transaction_repository.dart';
 import 'services/firebase_bootstrap.dart';
 import 'state/app_controller.dart';
 
@@ -26,6 +29,7 @@ class FirebaseInitializationException implements Exception {
 typedef FirebaseInitializer = Future<FirebaseBootstrapResult> Function();
 typedef AuthRepositoryFactory = AuthRepository Function();
 typedef GoalRepositoryFactory = GoalRepository Function();
+typedef TransactionRepositoryFactory = TransactionRepository Function();
 
 class AppDependencies {
   AppDependencies._(this.controller, this.mode);
@@ -37,6 +41,7 @@ class AppDependencies {
     FirebaseInitializer? initializeFirebase,
     AuthRepositoryFactory? createAuthRepository,
     GoalRepositoryFactory? createGoalRepository,
+    TransactionRepositoryFactory? createTransactionRepository,
   }) async {
     final firebase =
         await (initializeFirebase ?? FirebaseBootstrap.initialize)();
@@ -51,6 +56,9 @@ class AppDependencies {
           () => FirebaseAuthRepository(FirebaseAuth.instance))(),
       (createGoalRepository ??
           () => FirestoreGoalRepository(FirebaseFirestore.instance))(),
+      transactionRepository:
+          (createTransactionRepository ??
+          () => FirestoreTransactionRepository(FirebaseFirestore.instance))(),
       firebaseAvailable: true,
     );
     controller.initialize();
@@ -69,6 +77,9 @@ class AppDependencies {
             : null,
       ),
       InMemoryGoalRepository(initialGoals: MockFinancialData.goals),
+      transactionRepository: InMemoryTransactionRepository(
+        initialTransactions: MockFinancialData.transactions,
+      ),
       firebaseAvailable: false,
       firebaseMessage: 'Ambiente de teste',
     );

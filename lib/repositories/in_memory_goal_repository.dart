@@ -26,6 +26,20 @@ class InMemoryGoalRepository implements GoalRepository {
   }
 
   @override
+  Future<void> updateGoal(String userId, Goal goal) async {
+    final index = _goals.indexWhere((item) => item.id == goal.id);
+    if (index < 0) throw StateError('Meta não encontrada.');
+    _goals[index] = goal;
+    _controller.add(List.unmodifiable(_goals));
+  }
+
+  @override
+  Future<void> deleteGoal(String userId, String goalId) async {
+    _goals.removeWhere((item) => item.id == goalId);
+    _controller.add(List.unmodifiable(_goals));
+  }
+
+  @override
   Future<void> seedDefaultsIfEmpty(String userId, List<Goal> defaults) async {
     if (_goals.isEmpty) {
       _goals.addAll(defaults);

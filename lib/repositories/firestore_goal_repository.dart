@@ -32,6 +32,14 @@ class FirestoreGoalRepository implements GoalRepository {
   }
 
   @override
+  Future<void> updateGoal(String userId, Goal goal) =>
+      _goals(userId).doc(goal.id).update(_toFirestore(goal));
+
+  @override
+  Future<void> deleteGoal(String userId, String goalId) =>
+      _goals(userId).doc(goalId).delete();
+
+  @override
   Future<void> seedDefaultsIfEmpty(String userId, List<Goal> defaults) async {
     final existing = await _goals(userId).limit(1).get();
     if (existing.docs.isNotEmpty) return;
