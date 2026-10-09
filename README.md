@@ -38,6 +38,52 @@ portanto, ela não é apresentada como validada de ponta a ponta. A integração
 Gemini também exige concluir o fluxo do Firebase AI Logic e registrar os
 provedores do App Check no Firebase Console antes do teste real.
 
+## APK Android — Entrega CP6
+
+O Axios possui uma versão Android compilada em formato APK para instalação e demonstração em dispositivos físicos.
+
+### Funcionalidades incluídas
+
+- Autenticação com Firebase Authentication.
+- Dashboard financeiro com dados do Cloud Firestore.
+- Cadastro, edição e exclusão de receitas e despesas.
+- Importação de extratos PDF com identificação de duplicatas.
+- Planejamento e gerenciamento de metas financeiras.
+- Assistente financeiro integrado ao Gemini pelo Firebase AI Logic.
+
+A conexão bancária Pluggy Sandbox foi retirada do fluxo final de apresentação e permanece como uma integração experimental.
+
+### Gerar o APK de desenvolvimento
+
+Na raiz do projeto:
+
+```powershell
+flutter pub get
+flutter build apk --debug --dart-define=AXIOS_GEMINI_MODEL=gemini-3.5-flash
+```
+
+O arquivo gerado estará em:
+
+```text
+build/app/outputs/flutter-apk/app-debug.apk
+```
+
+O APK pode ser transferido para um dispositivo Android e instalado manualmente.
+
+### Firebase App Check
+
+Para testar o Gemini em builds de desenvolvimento, é necessário configurar o Firebase App Check para Android, utilizando um token de depuração autorizado.
+
+Tokens de depuração não devem ser incluídos em builds destinados à distribuição pública ou versionados no GitHub.
+
+Uma versão de distribuição deve utilizar um provedor de verificação de produção e assinatura apropriada.
+
+### Estado da validação
+
+A aplicação foi compilada para Android, e as principais operações financeiras foram testadas durante o desenvolvimento.
+
+O Gemini gerou respostas reais durante testes no Edge, mas apresentou instabilidades temporárias e respostas incompletas. A validação completa da IA no APK Android deve ser registrada separadamente após o teste no dispositivo.
+
 ## Assistente Axios com IA real
 
 Na execução Firebase, o `AppController` usa
