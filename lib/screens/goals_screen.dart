@@ -75,125 +75,173 @@ class GoalsScreen extends StatelessWidget {
   }
 
   Future<void> _showGoalForm(BuildContext context) async {
-    final nameController = TextEditingController();
-    final currentController = TextEditingController(text: '0');
-    final targetController = TextEditingController();
-    final monthsController = TextEditingController(text: '12');
-    final formKey = GlobalKey<FormState>();
-
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.background,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
-            MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
-          ),
-          child: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Nova meta',
-                    style: Theme.of(context).textTheme.headlineMedium,
+      builder: (_) => _NewGoalSheet(controller: controller),
+    );
+  }
+}
+
+class _NewGoalSheet extends StatefulWidget {
+  const _NewGoalSheet({required this.controller});
+
+  final AppController controller;
+
+  @override
+  State<_NewGoalSheet> createState() => _NewGoalSheetState();
+}
+
+class _NewGoalSheetState extends State<_NewGoalSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _currentController;
+  late final TextEditingController _targetController;
+  late final TextEditingController _monthsController;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _currentController = TextEditingController(text: '0');
+    _targetController = TextEditingController();
+    _monthsController = TextEditingController(text: '12');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _currentController.dispose();
+    _targetController.dispose();
+    _monthsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving || !(_formKey.currentState?.validate() ?? false)) return;
+
+    final current = _parseMoney(_currentController.text);
+    final target = _parseMoney(_targetController.text);
+    if (current >= target) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('O objetivo deve ser maior que o valor acumulado.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    final saved = await widget.controller.addGoal(
+      name: _nameController.text,
+      currentAmount: current,
+      targetAmount: target,
+      deadlineMonths: int.parse(_monthsController.text),
+    );
+    if (!mounted) return;
+
+    if (saved) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() => _saving = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          MediaQuery.viewInsetsOf(context).bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Nova meta',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  key: const ValueKey('goal-name-field'),
+                  controller: _nameController,
+                  enabled: !_saving,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'Nome da meta'),
+                  validator: (value) => (value?.trim().isEmpty ?? true)
+                      ? 'Informe o nome da meta.'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  key: const ValueKey('goal-current-amount-field'),
+                  controller: _currentController,
+                  enabled: !_saving,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    key: const ValueKey('goal-name-field'),
-                    controller: nameController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Nome da meta',
-                    ),
-                    validator: (value) => (value?.trim().isEmpty ?? true)
-                        ? 'Informe o nome da meta.'
-                        : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Valor já acumulado',
+                    prefixText: r'R$ ',
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: currentController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Valor já acumulado',
-                      prefixText: r'R$ ',
-                    ),
-                    validator: _validateMoney,
+                  validator: _validateMoney,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  key: const ValueKey('goal-target-amount-field'),
+                  controller: _targetController,
+                  enabled: !_saving,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: targetController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Valor objetivo',
-                      prefixText: r'R$ ',
-                    ),
-                    validator: _validateMoney,
+                  decoration: const InputDecoration(
+                    labelText: 'Valor objetivo',
+                    prefixText: r'R$ ',
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: monthsController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Prazo em meses',
-                    ),
-                    validator: (value) {
-                      final parsed = int.tryParse(value ?? '');
-                      return parsed == null || parsed <= 0
-                          ? 'Informe um prazo válido.'
-                          : null;
-                    },
+                  validator: _validateMoney,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  key: const ValueKey('goal-deadline-months-field'),
+                  controller: _monthsController,
+                  enabled: !_saving,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Prazo em meses',
                   ),
-                  const SizedBox(height: 20),
-                  FilledButton(
-                    key: const ValueKey('save-goal-button'),
-                    onPressed: () async {
-                      if (!(formKey.currentState?.validate() ?? false)) return;
-                      final current = _parseMoney(currentController.text);
-                      final target = _parseMoney(targetController.text);
-                      if (current >= target) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'O objetivo deve ser maior que o valor acumulado.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-                      final saved = await controller.addGoal(
-                        name: nameController.text,
-                        currentAmount: current,
-                        targetAmount: target,
-                        deadlineMonths: int.parse(monthsController.text),
-                      );
-                      if (saved && sheetContext.mounted) {
-                        Navigator.of(sheetContext).pop();
-                      }
-                    },
-                    child: const Text('Salvar meta'),
-                  ),
-                ],
-              ),
+                  validator: (value) {
+                    final parsed = int.tryParse(value ?? '');
+                    return parsed == null || parsed <= 0
+                        ? 'Informe um prazo válido.'
+                        : null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                FilledButton(
+                  key: const ValueKey('save-goal-button'),
+                  onPressed: _saving ? null : _save,
+                  child: _saving
+                      ? const SizedBox.square(
+                          dimension: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Salvar meta'),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
-    nameController.dispose();
-    currentController.dispose();
-    targetController.dispose();
-    monthsController.dispose();
   }
 
   String? _validateMoney(String? value) =>
