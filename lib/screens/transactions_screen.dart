@@ -348,6 +348,12 @@ class _TransactionFormSheet extends StatefulWidget {
 }
 
 class _TransactionFormSheetState extends State<_TransactionFormSheet> {
+  static final List<TransactionCategory> _expenseCategories = List.unmodifiable(
+    TransactionCategory.values
+        .where((category) => category != TransactionCategory.income)
+        .toSet(),
+  );
+
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _descriptionController;
   late final TextEditingController _amountController;
@@ -365,8 +371,26 @@ class _TransactionFormSheetState extends State<_TransactionFormSheet> {
       text: item == null ? '' : item.amount.asDouble.toStringAsFixed(2),
     );
     _type = item?.type ?? TransactionType.expense;
-    _category = item?.category ?? TransactionCategory.other;
+    _category = _validExpenseCategory(item?.category);
     _date = item?.date ?? DateTime.now();
+  }
+
+  static TransactionCategory _validExpenseCategory(
+    TransactionCategory? category,
+  ) {
+    return _expenseCategories.contains(category)
+        ? category!
+        : TransactionCategory.other;
+  }
+
+  void _changeType(Set<TransactionType> selection) {
+    final nextType = selection.first;
+    setState(() {
+      _type = nextType;
+      if (nextType == TransactionType.expense) {
+        _category = _validExpenseCategory(_category);
+      }
+    });
   }
 
   @override
@@ -448,9 +472,7 @@ class _TransactionFormSheetState extends State<_TransactionFormSheet> {
                     ),
                   ],
                   selected: {_type},
-                  onSelectionChanged: _saving
-                      ? null
-                      : (selection) => setState(() => _type = selection.first),
+                  onSelectionChanged: _saving ? null : _changeType,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -487,8 +509,7 @@ class _TransactionFormSheetState extends State<_TransactionFormSheet> {
                     key: const ValueKey('transaction-category-field'),
                     initialValue: _category,
                     decoration: const InputDecoration(labelText: 'Categoria'),
-                    items: TransactionCategory.values
-                        .where((value) => value != TransactionCategory.income)
+                    items: _expenseCategories
                         .map(
                           (value) => DropdownMenuItem(
                             value: value,
